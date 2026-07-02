@@ -489,6 +489,18 @@
         <p>每次使用同一技能，下一次消耗会翻倍（30→60→120…），请谨慎规划。</p>
       </section>
 
+      <section>
+        <h3>难度与区域</h3>
+        <p><b>难度</b>影响腐化速度、荒地/水源数量、净化门槛以及任务要求：</p>
+        <ul>
+          <li><b>简单</b>：腐化 +2/次，净化门槛 8，荒地少，适合熟悉规则。</li>
+          <li><b>普通</b>：腐化 +3/次，净化门槛 16，地形与威胁均衡。</li>
+          <li><b>困难</b>：腐化 +5/次，净化门槛 32，荒地/水源多，容错低。</li>
+        </ul>
+        <p><b>棋盘大小</b>决定战场空间：4×4 节奏紧凑，5×5/6×6 需要更长线的规划。</p>
+        <p><b>区域</b>主要改变关卡名称、地形布局和任务难度；区域序号越高，需要净化的荒地数量越多，共存的生物等级也越高。核心规则不变。</p>
+      </section>
+
       <div class="example-box">
         <b>小提示</b>：优先把低级生命推向荒地附近，合成灌木/树木时一并净化荒地；遇到腐化之种时，尽快合成高一级生命去净化，否则它会让棋盘越来越拥挤。
       </div>
@@ -939,6 +951,7 @@
       }
 
       handleTerrainInteractions();
+      handleCorruptedPurification();
       handleCorruptionActions();
       decayTempTerrains();
       updateCorruption(moved, mergedAny);
@@ -988,6 +1001,26 @@
               }
             }
             showToast('圣地觉醒：低阶生命获得进化！');
+          }
+        }
+      }
+    }
+
+    function handleCorruptedPurification() {
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (let i = 0; i < state.board.length; i++) {
+        const cell = state.board[i];
+        if (cell.type !== 'corrupted') continue;
+        const r = (i / CONFIG.boardSize) | 0;
+        const c = i % CONFIG.boardSize;
+        for (const [dr, dc] of dirs) {
+          const nb = getCell(r + dr, c + dc);
+          if (nb && nb.type === 'normal' && nb.value === cell.value * 2) {
+            const gain = cell.value;
+            state.energy = Math.min(CONFIG.energyMax, state.energy + gain);
+            clearTile(cell);
+            showToast(`净化腐化之种！+${gain} 自然之力`);
+            break;
           }
         }
       }
@@ -1268,6 +1301,7 @@
 
     function afterSkill() {
       skillMode = null;
+      handleCorruptedPurification();
       handleCorruptionActions();
       executeNestSpawns();
       decayTempTerrains();
