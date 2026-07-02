@@ -499,7 +499,13 @@
           <li><b>困难</b>：腐化 +5/次，净化门槛 32，荒地与水源明显增多，容错低。</li>
         </ul>
         <p><b>棋盘大小</b>决定战场空间：4×4 节奏紧凑，5×5/6×6 需要更长线的规划。</p>
-        <p><b>区域</b>主要改变关卡名称、地形布局和任务难度；区域序号越高，需要净化的荒地数量越多，共存的生物等级也越高。核心规则不变。</p>
+        <p><b>区域</b>共有 <b>8</b> 个，每个区域都有独特名称与地形主题。随着区域推进：</p>
+        <ul>
+          <li>荒地、水源等障碍物数量逐渐增多。</li>
+          <li>需要净化的荒地数量会随区域序号增加。</li>
+          <li>生物共存任务的要求会<strong>每区域都提升一级</strong>，例如普通难度从“种子+灌木”逐步升级到“精灵石+守护巨龙”。</li>
+        </ul>
+        <p>完成第 8 个区域后，世界彻底复苏，游戏通关。</p>
       </section>
 
       <div class="example-box">
@@ -597,6 +603,7 @@
     ];
 
     const REGION_NAMES = ['晨曦林地','迷雾沼泽','圣山遗迹','幽暗密林','翡翠草原','苍穹峰顶','银月山谷','熔岩边界'];
+    const TOTAL_REGIONS = REGION_NAMES.length;
 
     // ========================= 状态 =========================
     let state = {};
@@ -688,7 +695,9 @@
         level.initialTiles.push({ r: pos.r, c: pos.c, v: initialValue });
       }
 
-      // 地形
+      // 地形数量随区域进度增长，优先保证荒地（任务目标），再分配水源/巢穴/圣地，总障碍不超过 35%
+      const progressRatio = Math.min(0.22, levelIndex * 0.03);
+      const maxObstacles = Math.max(4, Math.floor(total * 0.35));
       const addTerrain = (type, count) => {
         for (let i = 0; i < count; i++) {
           const pos = randomEmptyCell(occupied);
@@ -698,18 +707,24 @@
         }
       };
       const minWater = { easy: 0, normal: 1, hard: 2 }[CONFIG.difficulty];
-      addTerrain('barren', Math.max(1, Math.floor(total * diff.barrenRatio)));
-      addTerrain('water', Math.max(minWater, Math.floor(total * diff.waterRatio)));
-      addTerrain('nest', Math.floor(total * diff.nestRatio));
-      addTerrain('sanctuary', Math.floor(total * diff.sanctuaryRatio));
+      let barrenCount = Math.max(1, Math.floor(total * (diff.barrenRatio + progressRatio)));
+      barrenCount = Math.min(barrenCount, maxObstacles - minWater);
+      let waterCount = Math.max(minWater, Math.floor(total * (diff.waterRatio + progressRatio * 0.4)));
+      waterCount = Math.min(waterCount, maxObstacles - barrenCount);
+      let nestCount = Math.min(Math.floor(total * diff.nestRatio), maxObstacles - barrenCount - waterCount);
+      let sanctuaryCount = Math.min(Math.floor(total * diff.sanctuaryRatio), maxObstacles - barrenCount - waterCount - nestCount);
+      addTerrain('barren', barrenCount);
+      addTerrain('water', waterCount);
+      addTerrain('nest', nestCount);
+      addTerrain('sanctuary', sanctuaryCount);
 
-      // 任务
-      const barrenCount = level.terrains.filter(t => t.t === 'barren').length;
-      const cleansableCount = Math.max(1, Math.min(barrenCount, diff.taskBarrenBase + Math.floor(levelIndex / 2)));
+      // 任务难度随区域梯度上涨
+      const actualBarrenCount = level.terrains.filter(t => t.t === 'barren').length;
+      const cleansableCount = Math.max(1, Math.min(actualBarrenCount, diff.taskBarrenBase + levelIndex));
       level.tasks.push({ type: 'cleanse_barren', count: cleansableCount });
 
-      const plantPow = Math.min(9, Math.max(2, diff.taskCoexistPlant + Math.floor(levelIndex / 2)));
-      const animalPow = Math.min(10, Math.max(4, diff.taskCoexistAnimal + Math.floor(levelIndex / 2)));
+      const plantPow = Math.min(9, Math.max(2, diff.taskCoexistPlant + levelIndex));
+      const animalPow = Math.min(10, Math.max(4, diff.taskCoexistAnimal + levelIndex));
       level.tasks.push({ type: 'coexist', species: [Math.pow(2, plantPow), Math.pow(2, animalPow)] });
 
       return level;
@@ -762,7 +777,7 @@
       state.tasks = (lvl.tasks || []).map(t => ({ ...t, done: false }));
 
       document.getElementById('regionName').textContent = lvl.name;
-      document.getElementById('level').textContent = state.levelIndex + 1;
+      document.getElementById('level').textContent = `${state.levelIndex + 1}/${TOTAL_REGIONS}`;
       document.getElementById('diffLabel').textContent = DIFFICULTY[CONFIG.difficulty].name;
       updateMissionPanel();
       if (!skipRender) render();
@@ -1175,12 +1190,19 @@
       // 结算分加入累计生态分，并保留自然之力到下一区域
       state.score = ecoScore;
       const essence = Math.floor(ecoScore / 1000);
+      const isFinal = state.levelIndex + 1 >= TOTAL_REGIONS;
+      document.getElementById('settlementTitle').textContent = isFinal ? '🌍 全部区域复苏成功！' : '区域复苏成功！';
       document.getElementById('finalScore').textContent = ecoScore;
-      document.getElementById('rewardList').innerHTML = `
+      document.getElementById('rewardList').innerHTML = isFinal ? `
+        <div>你已完成全部 ${TOTAL_REGIONS} 个区域的复苏！</div>
+        <div>难度：${DIFFICULTY[CONFIG.difficulty].name}　棋盘：${CONFIG.boardSize}×${CONFIG.boardSize}</div>
+        <div>获得自然精华 × ${essence}</div>
+      ` : `
         <div>难度：${DIFFICULTY[CONFIG.difficulty].name}　棋盘：${CONFIG.boardSize}×${CONFIG.boardSize}</div>
         <div>获得自然精华 × ${essence}</div>
         <div>自然之力 ${Math.floor(state.energy)} 将继承到下一区域</div>
       `;
+      document.getElementById('btnNext').style.display = isFinal ? 'none' : '';
       document.getElementById('settlementOverlay').classList.add('show');
       document.getElementById('toast').classList.remove('show');
     }
