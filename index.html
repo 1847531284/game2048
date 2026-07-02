@@ -705,8 +705,29 @@
     function loadLevel(index) {
       state = initState();
       state.levelIndex = index;
+      applyDifficultyConfig();
       const lvl = generateLevel(state.levelIndex);
+      setupLevel(lvl);
+    }
 
+    function nextLevel() {
+      const savedScore = state.score;
+      const savedEnergy = state.energy;
+      loadLevel(state.levelIndex + 1);
+      state.score = savedScore;
+      state.energy = savedEnergy;
+      render();
+    }
+
+    function applyDifficultyConfig() {
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      CONFIG.corruptionBase = diff.corruptionBase;
+      CONFIG.corruptionBlockedExtra = diff.corruptionBlockedExtra;
+      CONFIG.corruptionMax = diff.corruptionMax;
+      CONFIG.barrenCleanseLevel = diff.barrenCleanseLevel;
+    }
+
+    function setupLevel(lvl) {
       // 初始化棋盘
       for (let r = 0; r < CONFIG.boardSize; r++) {
         for (let c = 0; c < CONFIG.boardSize; c++) {
@@ -1117,19 +1138,23 @@
         if (cell.value > 0 && cell.type === 'normal') ecoScore += cell.value;
       }
       ecoScore = ecoScore * 10 + state.score;
+      // 结算分加入累计生态分，并保留自然之力到下一区域
+      state.score = ecoScore;
       const essence = Math.floor(ecoScore / 1000);
       document.getElementById('finalScore').textContent = ecoScore;
       document.getElementById('rewardList').innerHTML = `
         <div>难度：${DIFFICULTY[CONFIG.difficulty].name}　棋盘：${CONFIG.boardSize}×${CONFIG.boardSize}</div>
         <div>获得自然精华 × ${essence}</div>
-        <div>剩余能量 ${Math.floor(state.energy)} 已转化为生态分</div>
+        <div>自然之力 ${Math.floor(state.energy)} 将继承到下一区域</div>
       `;
       document.getElementById('settlementOverlay').classList.add('show');
+      document.getElementById('toast').classList.remove('show');
     }
 
     function triggerGameOver() {
       state.gameOver = true;
       document.getElementById('gameoverOverlay').classList.add('show');
+      document.getElementById('toast').classList.remove('show');
     }
 
     // ========================= 精灵技能 =========================
@@ -1297,11 +1322,6 @@
       }
 
       document.getElementById('btnStart').addEventListener('click', () => {
-        const diff = DIFFICULTY[CONFIG.difficulty];
-        CONFIG.corruptionBase = diff.corruptionBase;
-        CONFIG.corruptionBlockedExtra = diff.corruptionBlockedExtra;
-        CONFIG.corruptionMax = diff.corruptionMax;
-        CONFIG.barrenCleanseLevel = diff.barrenCleanseLevel;
         showGameUI(true);
         loadLevel(0);
       });
@@ -1351,7 +1371,7 @@
 
       document.getElementById('btnNext').addEventListener('click', () => {
         document.getElementById('settlementOverlay').classList.remove('show');
-        loadLevel(state.levelIndex + 1);
+        nextLevel();
       });
       document.getElementById('btnRetry').addEventListener('click', () => {
         document.getElementById('settlementOverlay').classList.remove('show');
