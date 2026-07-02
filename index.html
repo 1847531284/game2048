@@ -462,7 +462,7 @@
         <h3>地形效果</h3>
         <ul>
           <li><b>🏜️ 荒地</b>：无法被占据，但方块可滑过；净化后变为沃土。</li>
-          <li><b>💧 水源</b>：不可占据且会阻挡滑动，需要绕开。</li>
+          <li><b>💧 水源</b>：<span style="color:var(--danger)">负面地形</span>，不可被占据，且会<strong>阻挡方块滑动</strong>。把它当作必须绕开的湖泊，普通难度起就会出现，困难模式下数量更多。</li>
           <li><b>🪺 巢穴</b>：动物（≥64）停留在上面时，下回合会在相邻空格生成一只幼体（数值为成体的 1/16，最低为 4）。</li>
           <li><b>✨ 圣地</b>：当熊（≥256）移动到上面时，全屏所有 ≤8 的方块连升两级；每个圣地每局仅触发一次。</li>
         </ul>
@@ -493,9 +493,9 @@
         <h3>难度与区域</h3>
         <p><b>难度</b>影响腐化速度、荒地/水源数量、净化门槛以及任务要求：</p>
         <ul>
-          <li><b>简单</b>：腐化 +2/次，净化门槛 8，荒地少，适合熟悉规则。</li>
-          <li><b>普通</b>：腐化 +3/次，净化门槛 16，地形与威胁均衡。</li>
-          <li><b>困难</b>：腐化 +5/次，净化门槛 32，荒地/水源多，容错低。</li>
+          <li><b>简单</b>：腐化 +2/次，净化门槛 8，荒地与水源很少。</li>
+          <li><b>普通</b>：腐化 +3/次，净化门槛 16，开始出现水源，地形与威胁均衡。</li>
+          <li><b>困难</b>：腐化 +5/次，净化门槛 32，荒地与水源明显增多，容错低。</li>
         </ul>
         <p><b>棋盘大小</b>决定战场空间：4×4 节奏紧凑，5×5/6×6 需要更长线的规划。</p>
         <p><b>区域</b>主要改变关卡名称、地形布局和任务难度；区域序号越高，需要净化的荒地数量越多，共存的生物等级也越高。核心规则不变。</p>
@@ -531,16 +531,16 @@
         corruptionBase: 2, corruptionBlockedExtra: 5, corruptionMax: 120,
         spawnFourChance: 0.15, barrenCleanseLevel: 8,
         initialTiles: 3, initialValue: 2,
-        barrenRatio: 0.06, waterRatio: 0, nestRatio: 0.02, sanctuaryRatio: 0,
+        barrenRatio: 0.06, waterRatio: 0.04, nestRatio: 0.02, sanctuaryRatio: 0,
         taskBarrenBase: 2, taskCoexistPlant: 1, taskCoexistAnimal: 3,
-        desc: '腐化增长慢，荒地少，净化门槛低，适合熟悉规则。'
+        desc: '腐化增长慢，荒地与水源少，净化门槛低，适合熟悉规则。'
       },
       normal: {
         name: '普通',
         corruptionBase: 3, corruptionBlockedExtra: 10, corruptionMax: 100,
         spawnFourChance: 0.10, barrenCleanseLevel: 16,
         initialTiles: 2, initialValue: 2,
-        barrenRatio: 0.10, waterRatio: 0.04, nestRatio: 0.02, sanctuaryRatio: 0.02,
+        barrenRatio: 0.10, waterRatio: 0.08, nestRatio: 0.02, sanctuaryRatio: 0.02,
         taskBarrenBase: 2, taskCoexistPlant: 2, taskCoexistAnimal: 4,
         desc: '标准节奏，地形与腐化威胁适中。'
       },
@@ -549,9 +549,9 @@
         corruptionBase: 5, corruptionBlockedExtra: 15, corruptionMax: 80,
         spawnFourChance: 0.05, barrenCleanseLevel: 32,
         initialTiles: 2, initialValue: 4,
-        barrenRatio: 0.16, waterRatio: 0.10, nestRatio: 0.04, sanctuaryRatio: 0.02,
+        barrenRatio: 0.16, waterRatio: 0.12, nestRatio: 0.04, sanctuaryRatio: 0.02,
         taskBarrenBase: 3, taskCoexistPlant: 3, taskCoexistAnimal: 5,
-        desc: '腐化增长快，荒地多且需要高级植物净化，容错低。'
+        desc: '腐化增长快，荒地与水源多且需要高级植物净化，容错低。'
       },
     };
 
@@ -688,8 +688,7 @@
       }
 
       // 地形
-      const addTerrain = (type, ratio) => {
-        const count = Math.max(type === 'barren' ? 1 : 0, Math.floor(total * ratio));
+      const addTerrain = (type, count) => {
         for (let i = 0; i < count; i++) {
           const pos = randomEmptyCell(occupied);
           if (!pos) break;
@@ -697,18 +696,19 @@
           level.terrains.push({ r: pos.r, c: pos.c, t: type });
         }
       };
-      addTerrain('barren', diff.barrenRatio);
-      addTerrain('water', diff.waterRatio);
-      addTerrain('nest', diff.nestRatio);
-      addTerrain('sanctuary', diff.sanctuaryRatio);
+      const minWater = { easy: 0, normal: 1, hard: 2 }[CONFIG.difficulty];
+      addTerrain('barren', Math.max(1, Math.floor(total * diff.barrenRatio)));
+      addTerrain('water', Math.max(minWater, Math.floor(total * diff.waterRatio)));
+      addTerrain('nest', Math.floor(total * diff.nestRatio));
+      addTerrain('sanctuary', Math.floor(total * diff.sanctuaryRatio));
 
       // 任务
       const barrenCount = level.terrains.filter(t => t.t === 'barren').length;
       const cleansableCount = Math.max(1, Math.min(barrenCount, diff.taskBarrenBase + Math.floor(levelIndex / 2)));
       level.tasks.push({ type: 'cleanse_barren', count: cleansableCount });
 
-      const plantPow = Math.min(9, Math.max(2, diff.taskCoexistPlant + Math.floor(levelIndex / 3)));
-      const animalPow = Math.min(10, Math.max(4, diff.taskCoexistAnimal + Math.floor(levelIndex / 3)));
+      const plantPow = Math.min(9, Math.max(2, diff.taskCoexistPlant + Math.floor(levelIndex / 2)));
+      const animalPow = Math.min(10, Math.max(4, diff.taskCoexistAnimal + Math.floor(levelIndex / 2)));
       level.tasks.push({ type: 'coexist', species: [Math.pow(2, plantPow), Math.pow(2, animalPow)] });
 
       return level;
