@@ -352,7 +352,8 @@
       </div>
 
       <div class="menu-actions">
-        <button class="btn" id="btnStart">开始复苏</button>
+        <button class="btn" id="btnMenuRestart">开始复苏</button>
+        <button class="btn secondary" id="btnContinue" style="display:none;">继续进化</button>
         <button class="btn secondary" id="btnMenuHelp">玩法说明</button>
       </div>
     </div>
@@ -714,18 +715,18 @@
       return level;
     }
 
-    function loadLevel(index) {
+    function loadLevel(index, skipRender) {
       state = initState();
       state.levelIndex = index;
       applyDifficultyConfig();
       const lvl = generateLevel(state.levelIndex);
-      setupLevel(lvl);
+      setupLevel(lvl, skipRender);
     }
 
     function nextLevel() {
       const savedScore = state.score;
       const savedEnergy = state.energy;
-      loadLevel(state.levelIndex + 1);
+      loadLevel(state.levelIndex + 1, true);
       state.score = savedScore;
       state.energy = savedEnergy;
       render();
@@ -739,7 +740,7 @@
       CONFIG.barrenCleanseLevel = diff.barrenCleanseLevel;
     }
 
-    function setupLevel(lvl) {
+    function setupLevel(lvl, skipRender) {
       // 初始化棋盘
       for (let r = 0; r < CONFIG.boardSize; r++) {
         for (let c = 0; c < CONFIG.boardSize; c++) {
@@ -764,7 +765,7 @@
       document.getElementById('level').textContent = state.levelIndex + 1;
       document.getElementById('diffLabel').textContent = DIFFICULTY[CONFIG.difficulty].name;
       updateMissionPanel();
-      render();
+      if (!skipRender) render();
     }
 
     // ========================= 渲染 =========================
@@ -1315,12 +1316,29 @@
     }
 
     // ========================= 菜单与流程控制 =========================
+    function hasActiveGame() {
+      return state.board && state.board.length > 0 && !state.gameOver && !state.victory;
+    }
+
+    function updateMenuButtons() {
+      const restartBtn = document.getElementById('btnMenuRestart');
+      const continueBtn = document.getElementById('btnContinue');
+      if (hasActiveGame()) {
+        restartBtn.textContent = '重新开始';
+        continueBtn.style.display = '';
+      } else {
+        restartBtn.textContent = '开始复苏';
+        continueBtn.style.display = 'none';
+      }
+    }
+
     function showGameUI(show) {
       const ids = ['gameTopbar','gameHud','missionPanel','corruptionWrap','boardWrap','spiritPanel'];
       for (const id of ids) {
         document.getElementById(id).style.display = show ? '' : 'none';
       }
       document.getElementById('menuOverlay').style.display = show ? 'none' : 'flex';
+      if (!show) updateMenuButtons();
     }
 
     function setupMenu() {
@@ -1355,9 +1373,13 @@
         btn.addEventListener('click', () => selectOption(sizeRow, btn.dataset.size, 'size'));
       }
 
-      document.getElementById('btnStart').addEventListener('click', () => {
+      document.getElementById('btnMenuRestart').addEventListener('click', () => {
         showGameUI(true);
         loadLevel(0);
+      });
+
+      document.getElementById('btnContinue').addEventListener('click', () => {
+        showGameUI(true);
       });
 
       document.getElementById('btnMenuHelp').addEventListener('click', () => {
