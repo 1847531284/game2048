@@ -250,6 +250,24 @@
     }
     .toast.show { opacity: 1; }
 
+    .help-scroll {
+      width: min(520px, 92vw);
+      max-height: 86vh;
+      overflow-y: auto;
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 22px;
+      text-align: left;
+      box-shadow: var(--shadow);
+    }
+    .help-scroll h2 { text-align: center; color: var(--accent-soft); margin-bottom: 14px; }
+    .help-scroll h3 { font-size: 15px; color: var(--gold); margin: 16px 0 6px; }
+    .help-scroll p, .help-scroll li { font-size: 13px; line-height: 1.7; color: var(--text); }
+    .help-scroll ul { padding-left: 18px; margin: 6px 0; }
+    .help-scroll li { margin: 6px 0; }
+    .help-scroll b { color: var(--accent-soft); }
+    .help-scroll .btn { display: block; margin: 18px auto 0; }
+
     @media (max-width: 480px) {
       .title-group h1 { font-size: 18px; }
       .tile-icon { font-size: 22px; }
@@ -265,7 +283,7 @@
     </div>
     <div class="top-actions">
       <button class="btn-icon" id="btnRestart" title="重新开始">↺</button>
-      <button class="btn-icon" id="btnSettings" title="设置">⚙️</button>
+      <button class="btn-icon" id="btnHelp" title="玩法说明">?</button>
     </div>
   </div>
 
@@ -314,6 +332,43 @@
     <h2>生态系统崩溃</h2>
     <p style="color:var(--muted); margin:12px 0;">腐化淹没了这片土地……</p>
     <button class="btn" id="btnOverRetry">重新开始</button>
+  </div>
+
+  <div class="overlay" id="helpOverlay">
+    <div class="help-scroll">
+      <h2>🌿 玩法说明</h2>
+      <section>
+        <h3>基础操作</h3>
+        <p>使用 <b>方向键</b> 或 <b>触屏滑动</b> 移动棋盘上的生命方块。相同生物碰撞时会合并为更高一级的生命（数值翻倍）。每次有效移动后会在空地随机生成新的水滴或种子。</p>
+      </section>
+      <section>
+        <h3>胜利目标</h3>
+        <p>每个区域都有独特的<b>生态任务</b>，例如净化荒地、让灌木与鹿同时存在等。完成全部任务即可触发“结算爆发”，根据场上生命总价值获得生态分。</p>
+      </section>
+      <section>
+        <h3>地形效果</h3>
+        <ul>
+          <li><b>🏜️ 荒地</b>：无法被占据；当在其相邻四格合成出 ≥16 的植物（灌木/树木）时会被净化为沃土。</li>
+          <li><b>💧 水源</b>：不可占据，会阻挡滑动。</li>
+          <li><b>🪺 巢穴</b>：动物（≥64）停留时，下回合会在相邻空格生成一只幼体。</li>
+          <li><b>✨ 圣地</b>：熊（≥256）停留时，全屏所有 ≤8 的方块会连升两级，每局仅触发一次。</li>
+        </ul>
+      </section>
+      <section>
+        <h3>腐化威胁</h3>
+        <p>每次滑动都会增加腐化侵蚀。若滑动被完全阻挡，腐化会额外激增。侵蚀满时会在空地生成<b>腐化之种</b>，它会降级相邻生命并传播临时荒地。合成出比腐化之种高一级（数值×2）的正常方块并与之相邻，即可净化它并获得大量自然之力。</p>
+      </section>
+      <section>
+        <h3>精灵技能</h3>
+        <p>合并可获得<b>自然之力</b>。点击底部精灵卡片后，再点击棋盘释放技能。技能使用次数越多，下次消耗越高。</p>
+        <ul>
+          <li><b>净化之光</b>：净化目标格周围 3×3 的荒地，并升级其中的正常方块。</li>
+          <li><b>筑巢</b>：将一只动物所在格变为巢穴，并立即繁衍一只幼体。</li>
+          <li><b>共生爆发</b>：选择两个相邻、差两级内、不同物种且 ≥16 的植物/动物，合成更高级生命。</li>
+        </ul>
+      </section>
+      <button class="btn" id="btnCloseHelp">知道了</button>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -452,6 +507,7 @@
         terrain,
         tempTimer: 0,
         sanctuaryUsed: false,
+        pop: false,
       };
     }
 
@@ -549,7 +605,10 @@
               tile.style.background = s.color;
               tile.style.color = s.text;
               tile.innerHTML = `<div class="tile-icon">${s.icon}</div><div class="tile-value">${cell.value}</div>`;
-              tile.classList.add('tile-pop');
+              if (cell.pop) {
+                tile.classList.add('tile-pop');
+                cell.pop = false;
+              }
             }
             div.appendChild(tile);
           }
@@ -654,7 +713,10 @@
               slot.filled = true;
               slot.pos.cell.value = orig.value;
               slot.pos.cell.type = orig.type;
-              if (slot.pos.cell !== orig.pos.cell) moved = true;
+              if (slot.pos.cell !== orig.pos.cell) {
+                moved = true;
+                slot.pos.cell.pop = true;
+              }
               placed = true;
               break;
             }
@@ -664,6 +726,7 @@
               slot.value = newValue;
               slot.merged = true;
               slot.pos.cell.value = newValue;
+              slot.pos.cell.pop = true;
               scoreGain += newValue;
               mergeEvents.push({ r: slot.pos.r, c: slot.pos.c, value: newValue });
               moved = true;
@@ -691,23 +754,23 @@
     }
 
     function afterMove({ moved, mergedAny, mergeEvents }) {
-      // 1. 合并净化荒地
+      // 1. 执行上回合巢穴预定生成（先生成，再重新标记本回合的新巢穴）
+      executeNestSpawns();
+
+      // 2. 合并净化荒地
       for (const ev of mergeEvents) {
         if (ev.value >= CONFIG.barrenCleanseLevel) {
           cleanseAdjacentBarren(ev.r, ev.c);
         }
       }
 
-      // 2. 地形互动
+      // 3. 地形互动
       handleTerrainInteractions();
 
-      // 3. 腐化行动
+      // 4. 腐化行动
       if (CONFIG.enableCorruption) {
         handleCorruptionActions();
       }
-
-      // 4. 执行巢穴预定生成
-      executeNestSpawns();
 
       // 5. 临时地形倒计时
       decayTempTerrains();
@@ -824,6 +887,7 @@
           const target = empties[Math.floor(Math.random() * empties.length)];
           target.value = q.value;
           target.type = 'normal';
+          target.pop = true;
         }
       }
     }
@@ -880,6 +944,7 @@
       const v = Math.random() < CONFIG.spawnFourChance ? 4 : 2;
       cell.value = v;
       cell.type = 'normal';
+      cell.pop = true;
     }
 
     function hasAnyMove() {
@@ -937,6 +1002,11 @@
     // ========================= 精灵技能 =========================
     function onSpiritClick(spirit) {
       if (!CONFIG.enableSpirits || state.gameOver || state.victory) return;
+      // 再次点击同一精灵取消选择
+      if (skillMode && skillMode.spiritId === spirit.id) {
+        cancelSkillMode();
+        return;
+      }
       const uses = state.spiritUses[spirit.id] || 0;
       const cost = spirit.skill.baseCost * Math.pow(2, uses);
       if (state.energy < cost) {
@@ -944,7 +1014,7 @@
         return;
       }
       skillMode = { spiritId: spirit.id, target: spirit.target, step: 1, first: null };
-      showToast(`请选择目标：${spirit.skill.name}`);
+      showToast(`请选择目标：${spirit.skill.name}（按 Esc 取消）`);
       render();
     }
 
@@ -992,6 +1062,7 @@
             const t = empties[Math.floor(Math.random() * empties.length)];
             t.value = spawnValue;
             t.type = 'normal';
+            t.pop = true;
           }
           spendSkill(spirit);
           afterSkill();
@@ -1019,6 +1090,7 @@
           if (valid) {
             const newValue = Math.min(MAX_SPECIES_VALUE, Math.max(first.value, second.value) * 4);
             first.value = newValue;
+            first.pop = true;
             clearTile(second);
             // 检查合并后是否净化相邻荒地
             if (newValue >= CONFIG.barrenCleanseLevel) {
@@ -1090,11 +1162,11 @@
       }, { passive: true });
 
       document.getElementById('btnRestart').addEventListener('click', () => loadLevel(state.levelIndex));
-      document.getElementById('btnSettings').addEventListener('click', () => {
-        // 简单切换腐化开关作为演示
-        CONFIG.enableCorruption = !CONFIG.enableCorruption;
-        showToast(CONFIG.enableCorruption ? '腐化系统：开启' : '腐化系统：关闭');
-        render();
+      document.getElementById('btnHelp').addEventListener('click', () => {
+        document.getElementById('helpOverlay').classList.add('show');
+      });
+      document.getElementById('btnCloseHelp').addEventListener('click', () => {
+        document.getElementById('helpOverlay').classList.remove('show');
       });
       document.getElementById('btnNext').addEventListener('click', () => {
         document.getElementById('settlementOverlay').classList.remove('show');
