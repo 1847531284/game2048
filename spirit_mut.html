@@ -331,6 +331,9 @@
         <button class="btn ghost" id="btnLB">排行榜</button>
         <button class="btn ghost" id="btnShop">样本商店</button>
       </div>
+      <div class="menu-actions">
+        <button class="btn ghost" id="btnCloud">☁️ 云同步</button>
+      </div>
     </div>
   </div>
 
@@ -343,6 +346,7 @@
       </div>
       <div class="topbar-actions">
         <button class="btn-icon" id="btnRestart" title="重启本区">↺</button>
+        <button class="btn-icon" id="btnCloud2" title="云同步">☁️</button>
         <button class="btn-icon" id="btnMenu" title="主菜单">☰</button>
         <button class="btn-icon" id="btnHelp2" title="玩法说明">?</button>
       </div>
@@ -1308,6 +1312,204 @@ function showPaletteModal() {
   }, true); // 强制弹窗，只能通过按钮关闭（取消会退还能量）
 }
 
+/* ---------- 云同步（GitHub Gist） ---------- */
+
+// Gist 文件名常量
+const GIST_FILENAME = 'ark_mut_save.json';
+// localStorage 键
+const GIST_TOKEN_KEY = 'ark_mut_gist_token';
+const GIST_ID_KEY = 'ark_mut_gist_id';
+
+function getGistToken() { return localStorage.getItem(GIST_TOKEN_KEY) || ''; }
+function setGistToken(t) { localStorage.setItem(GIST_TOKEN_KEY, t); }
+function getGistId() { return localStorage.getItem(GIST_ID_KEY) || ''; }
+function setGistId(id) { localStorage.setItem(GIST_ID_KEY, id); }
+
+// 收集所有游戏数据（存档/升级/样本/所有排行榜）
+function collectCloudData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.indexOf('ark_mut_') === 0) data[k] = localStorage.getItem(k);
+  }
+  data.__export_time = new Date().toISOString();
+  return data;
+}
+
+// 把云端数据写回 localStorage
+function applyCloudData(data) {
+  // 先清除旧的 ark_mut_ 数据（token/gist_id 除外）
+  const keep = [GIST_TOKEN_KEY, GIST_ID_KEY];
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.indexOf('ark_mut_') === 0 && keep.indexOf(k) === -1) toRemove.push(k);
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+  // 写入云端数据
+  Object.keys(data).forEach(k => {
+    if (k === '__export_time') return;
+    if (keep.indexOf(k) !== -1) return; // 不覆盖 token/gist_id
+    localStorage.setItem(k, data[k]);
+  });
+}
+
+// 创建新 Gist
+function createGist(data, cb) {
+  const token = getGistToken();
+  const body = JSON.stringify({
+    description: '精灵方舟：变异 云存档',
+    public: false, // 私有
+    files: { [GIST_FILENAME]: { content: JSON.stringify(data) } }
+  });
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', 'https://api.github.com/gists');
+  xhr.setRequestHeader('Authorization', 'token ' + token);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        const resp = JSON.parse(xhr.responseText);
+        cb(null, resp.id);
+      } catch (e) { cb('解析响应失败'); }
+    } else {
+      cb('创建失败 HTTP ' + xhr.status);
+    }
+  };
+  xhr.send(body);
+}
+
+// 更新已有 Gist
+function updateGist(data, cb) {
+  const token = getGistToken();
+  const id = getGistId();
+  const body = JSON.stringify({
+    description: '精灵方舟：变异 云存档',
+    files: { [GIST_FILENAME]: { content: JSON.stringify(data) } }
+  });
+  const xhr = new XMLHttpRequest();
+  xhr.open('PATCH', 'https://api.github.com/gists/' + id);
+  xhr.setRequestHeader('Authorization', 'token ' + token);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) cb(null);
+    else cb('上传失败 HTTP ' + xhr.status);
+  };
+  xhr.send(body);
+}
+
+// 读取 Gist
+function fetchGist(cb) {
+  const token = getGistToken();
+  const id = getGistId();
+  if (!id) { cb('无云端存档记录'); return; }
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', 'https://api.github.com/gists/' + id);
+  xhr.setRequestHeader('Authorization', 'token ' + token);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        const resp = JSON.parse(xhr.responseText);
+        const f = resp.files && resp.files[GIST_FILENAME];
+        if (!f) { cb('云端无存档文件'); return; }
+        const data = JSON.parse(f.content);
+        cb(null, data, resp.updated_at);
+      } catch (e) { cb('解析云端数据失败'); }
+    } else if (xhr.status === 404) {
+      cb('云端存档已删除');
+    } else {
+      cb('下载失败 HTTP ' + xhr.status);
+    }
+  };
+  xhr.send();
+}
+
+// 上传存档
+function uploadCloud(cb) {
+  const token = getGistToken();
+  if (!token) { cb('请先配置 Token'); return; }
+  const data = collectCloudData();
+  const id = getGistId();
+  if (id) {
+    updateGist(data, function (err) {
+      if (err) cb(err); else cb(null, data.__export_time);
+    });
+  } else {
+    createGist(data, function (err, newId) {
+      if (err) cb(err);
+      else { setGistId(newId); cb(null, data.__export_time); }
+    });
+  }
+}
+
+// 云同步弹窗
+function showCloud(onClose) {
+  const token = getGistToken();
+  const gistId = getGistId();
+  const masked = token ? token.slice(0, 8) + '****' + token.slice(-4) : '未配置';
+  const html =
+    '<h2>☁️ 云同步</h2>' +
+    '<p>用 GitHub Gist 在多设备间同步存档。Token 仅保存在本机浏览器。</p>' +
+    '<div class="stat-row"><span>GitHub Token</span><span class="v" style="font-size:13px;">' + masked + '</span></div>' +
+    '<div class="stat-row"><span>云端存档ID</span><span class="v" style="font-size:13px;">' + (gistId || '未创建') + '</span></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn" id="btnUpload">📤 上传到云端</button>' +
+      '<button class="btn" id="btnDownload">📥 从云端恢复</button>' +
+    '</div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn secondary" id="btnConfigToken">⚙️ 配置 Token</button>' +
+      '<button class="btn secondary" id="btnClearCloud">🗑️ 清除本机配置</button>' +
+    '</div>' +
+    '<div id="cloudStatus" style="margin-top:10px;font-size:12px;color:var(--muted);min-height:18px;"></div>' +
+    '<div class="modal-actions"><button class="btn ghost" id="btnCloseCloud">关闭</button></div>';
+  showModal(html, () => {
+    const setStatus = (msg, isErr) => {
+      const el = document.getElementById('cloudStatus');
+      if (!el) return;
+      el.textContent = msg;
+      el.style.color = isErr ? 'var(--danger)' : 'var(--toxic)';
+    };
+    document.getElementById('btnUpload').onclick = () => {
+      setStatus('上传中...');
+      uploadCloud((err, time) => {
+        if (err) setStatus('❌ ' + err, true);
+        else setStatus('✅ 已上传（' + new Date(time).toLocaleString() + '）');
+      });
+    };
+    document.getElementById('btnDownload').onclick = () => {
+      setStatus('下载中...');
+      fetchGist((err, data, updatedAt) => {
+        if (err) { setStatus('❌ ' + err, true); return; }
+        applyCloudData(data);
+        setStatus('✅ 已恢复（云端更新于 ' + new Date(updatedAt).toLocaleString() + '），请重新进入游戏');
+        // 刷新菜单的"继续上次"按钮状态
+        document.getElementById('btnContinue').disabled = !localStorage.getItem('ark_mut_save');
+      });
+    };
+    document.getElementById('btnConfigToken').onclick = () => {
+      const t = prompt('请输入 GitHub Personal Access Token（需 gist 权限）：\n获取地址：https://github.com/settings/tokens', token);
+      if (t === null) return;
+      const trimmed = t.trim();
+      if (trimmed && !confirm('确认保存该 Token？它将仅保存在本机浏览器。')) return;
+      setGistToken(trimmed);
+      setGistId(''); // 换 token 后清空旧 gist id
+      closeModal();
+      showCloud(onClose); // 刷新显示
+    };
+    document.getElementById('btnClearCloud').onclick = () => {
+      if (!confirm('清除本机 Token 和存档ID？（不会影响云端 Gist）')) return;
+      localStorage.removeItem(GIST_TOKEN_KEY);
+      localStorage.removeItem(GIST_ID_KEY);
+      closeModal();
+      showCloud(onClose);
+    };
+    document.getElementById('btnCloseCloud').onclick = () => { onClose(); };
+  });
+}
+
 /* ---------- 商店 ---------- */
 
 function showShop(onClose) {
@@ -1831,6 +2033,9 @@ function initMenu() {
   document.getElementById('btnShop').onclick = () => {
     showShop(() => closeModal());
   };
+  document.getElementById('btnCloud').onclick = () => {
+    showCloud(() => closeModal());
+  };
 
   // 游戏内按钮
   document.getElementById('btnRestart').onclick = () => {
@@ -1842,6 +2047,7 @@ function initMenu() {
     if (confirm('返回主菜单？当前进度已自动保存。')) showMenu();
   };
   document.getElementById('btnHelp2').onclick = () => showHelp(() => closeModal());
+  document.getElementById('btnCloud2').onclick = () => showCloud(() => closeModal());
 
   // 键盘
   document.addEventListener('keydown', handleKey);
