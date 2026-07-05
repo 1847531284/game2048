@@ -1807,16 +1807,12 @@ function handleTouchEnd(e) {
 // 3. Gist ID 仍存 localStorage（它不是机密），方便下次定位存档
 
 const GIST_FILENAME = 'ark_mut_save.json';
-const GIST_TOKEN_KEY = 'ark_mut_gist_token';   // 仅用于 collectCloudData 排除判断
 const GIST_ID_KEY = 'ark_mut_gist_id';          // 非机密，可持久化
+const SHARED_TOKEN_KEY = 'ark_shared_github_token';  // 所有游戏共享的 token（由大厅 OAuth 登录后写入 sessionStorage）
 
 function getGistToken() {
-  // 优先 sessionStorage，降级到 localStorage（兼容旧版用户已配置的 token）
-  return sessionStorage.getItem(GIST_TOKEN_KEY) || localStorage.getItem(GIST_TOKEN_KEY) || '';
-}
-function setGistToken(t) {
-  if (t) sessionStorage.setItem(GIST_TOKEN_KEY, t);
-  else { sessionStorage.removeItem(GIST_TOKEN_KEY); localStorage.removeItem(GIST_TOKEN_KEY); }
+  // 读取共享 token（由大厅 OAuth 登录后写入 sessionStorage）
+  return sessionStorage.getItem(SHARED_TOKEN_KEY) || '';
 }
 function getGistId() { return localStorage.getItem(GIST_ID_KEY) || ''; }
 function setGistId(id) {
@@ -1831,8 +1827,8 @@ function collectCloudData() {
     const k = localStorage.key(i);
     if (!k) continue;
     if (k.indexOf('ark_mut_') !== 0) continue;
-    // 严格排除 token 键（绝不上传）
-    if (k === GIST_TOKEN_KEY) continue;
+    // 严格排除 gist_id（不上传，避免覆盖云端其他存档）
+    if (k === GIST_ID_KEY) continue;
     data[k] = localStorage.getItem(k);
   }
   data.__export_time = new Date().toISOString();
@@ -1840,7 +1836,7 @@ function collectCloudData() {
 }
 
 function applyCloudData(data) {
-  const keep = [GIST_TOKEN_KEY, GIST_ID_KEY];
+  const keep = [GIST_ID_KEY];
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -1849,7 +1845,7 @@ function applyCloudData(data) {
   toRemove.forEach(k => localStorage.removeItem(k));
   Object.keys(data).forEach(k => {
     if (k === '__export_time') return;
-    if (keep.indexOf(k) !== -1) return;  // 不覆盖本地 token / gist_id
+    if (keep.indexOf(k) !== -1) return;  // 不覆盖本地 gist_id
     localStorage.setItem(k, data[k]);
   });
 }
@@ -1857,25 +1853,25 @@ function applyCloudData(data) {
 function showCloud(onClose) {
   const token = getGistToken();
   const id = getGistId();
-  const html =
+  let html =
     '<div class="help-content">' +
     '<h3>☁️ GitHub 云同步</h3>' +
-    '<p style="font-size:12px;color:var(--muted);">通过 GitHub Gist 备份/恢复你的全部游戏进度（存档、升级、样本、排行榜）。</p>' +
-    '<h3>1. 配置 Token</h3>' +
-    '<p style="font-size:12px;">打开 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-soft);">github.com/settings/tokens</a>，勾选 <b>gist</b> 权限，生成 token（形如 ghp_xxx）后粘贴到下面。</p>' +
-    '<p style="font-size:11px;color:var(--muted);">⚠️ Token 仅保存在当前会话（关闭页面自动清空），不会上传到云端。</p>' +
-    '<input id="cloudTokenInput" type="password" placeholder="ghp_..." value="' + (token || '').replace(/"/g, '&quot;') + '" ' +
-      'style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:var(--panel-light);color:var(--text);font-size:13px;margin-top:6px;" />' +
-    '<h3>2. 存档 ID</h3>' +
+    '<p style="font-size:12px;color:var(--muted);">通过 GitHub Gist 备份/恢复本游戏的进度（存档、升级、样本、排行榜）。</p>';
+  if (token) {
+    html += '<p style="font-size:12px;color:var(--toxic);">✅ 已通过大厅登录 GitHub，可直接上传/下载。</p>';
+  } else {
+    html += '<p style="font-size:12px;color:var(--danger);">⚠️ 尚未登录 GitHub。请先返回 <a href="index.html" style="color:var(--accent-soft);">游戏大厅</a> 点「☁️ GitHub 登录」授权后再使用云同步。</p>';
+  }
+  html += '<h3>存档 ID</h3>' +
     '<p style="font-size:12px;color:var(--muted);">' + (id ? '当前云端存档ID：<span style="color:var(--toxic);word-break:break-all;">' + id + '</span>' : '尚未创建云端存档，点「上传到云端」即可创建。') + '</p>' +
     '</div>' +
     '<div class="modal-actions">' +
-      '<button class="btn" id="btnCloudUpload">⬆️ 上传到云端</button>' +
-      '<button class="btn secondary" id="btnCloudDownload">⬇️ 从云端下载</button>' +
+      '<button class="btn" id="btnCloudUpload" ' + (token ? '' : 'disabled') + '>⬆️ 上传到云端</button>' +
+      '<button class="btn secondary" id="btnCloudDownload" ' + (token && id ? '' : 'disabled') + '>⬇️ 从云端下载</button>' +
     '</div>' +
     '<div class="modal-actions" style="margin-top:10px;">' +
-      '<button class="btn ghost" id="btnCloudSaveToken">保存Token</button>' +
-      '<button class="btn ghost danger" id="btnCloudClear">清空配置</button>' +
+      '<button class="btn ghost" id="btnCloudClear" ' + (token ? '' : 'disabled') + '>清空存档ID</button>' +
+      '<a class="btn ghost" href="index.html">返回大厅</a>' +
       '<button class="btn ghost" id="btnCloudClose">关闭</button>' +
     '</div>' +
     '<div id="cloudStatus" style="margin-top:12px;font-size:12px;color:var(--muted);min-height:18px;"></div>';
@@ -1883,17 +1879,9 @@ function showCloud(onClose) {
   showModal(html, null, true);
   const status = msg => { const el = document.getElementById('cloudStatus'); if (el) el.textContent = msg; };
 
-  document.getElementById('btnCloudSaveToken').onclick = () => {
-    const v = document.getElementById('cloudTokenInput').value.trim();
-    if (!v) { status('⚠️ Token 不能为空'); return; }
-    setGistToken(v);
-    status('✅ Token 已保存到当前会话（关闭页面自动清空）');
-  };
   document.getElementById('btnCloudClear').onclick = () => {
-    setGistToken('');
     setGistId('');
-    document.getElementById('cloudTokenInput').value = '';
-    status('✅ 已清空 Token 和 存档ID');
+    status('✅ 已清空本地存档ID');
   };
   document.getElementById('btnCloudUpload').onclick = () => uploadCloud(status);
   document.getElementById('btnCloudDownload').onclick = () => downloadCloud(status);

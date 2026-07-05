@@ -355,6 +355,7 @@
         <button class="btn" id="btnMenuRestart">开始复苏</button>
         <button class="btn secondary" id="btnContinue" style="display:none;">继续进化</button>
         <button class="btn secondary" id="btnMenuHelp">玩法说明</button>
+        <button class="btn secondary" id="btnMenuCloud">☁️ 云同步</button>
       </div>
     </div>
   </div>
@@ -366,6 +367,7 @@
       <p id="regionName">晨曦林地</p>
     </div>
     <div class="top-actions">
+      <button class="btn-icon" id="btnCloud2" title="云同步">☁️</button>
       <button class="btn-icon" id="btnRestart" title="重新开始">↺</button>
       <button class="btn-icon" id="btnMenu" title="返回菜单">☰</button>
       <button class="btn-icon" id="btnHelp" title="玩法说明">?</button>
@@ -1407,6 +1409,168 @@
       document.getElementById('btnMenuHelp').addEventListener('click', () => {
         document.getElementById('helpOverlay').classList.add('show');
       });
+
+      document.getElementById('btnMenuCloud').addEventListener('click', () => showCloudModal());
+      document.getElementById('btnCloud2').addEventListener('click', () => showCloudModal());
+    }
+
+    // ========================= 云同步（GitHub Gist） =========================
+    const EVO_GIST_FILE = 'ark_evo_save.json';
+    const EVO_GIST_ID_KEY = 'ark_evo_gist_id';
+    const EVO_SHARED_TOKEN_KEY = 'ark_shared_github_token';
+    const EVO_SAVE_KEY = 'ark_evo_save';
+
+    function evoGetToken() { return sessionStorage.getItem(EVO_SHARED_TOKEN_KEY) || ''; }
+    function evoGetGistId() { return localStorage.getItem(EVO_GIST_ID_KEY) || ''; }
+    function evoSetGistId(id) {
+      if (id) localStorage.setItem(EVO_GIST_ID_KEY, id);
+      else localStorage.removeItem(EVO_GIST_ID_KEY);
+    }
+
+    function evoCollectData() {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf('ark_evo_') !== 0) continue;
+        if (k === EVO_GIST_ID_KEY) continue;
+        data[k] = localStorage.getItem(k);
+      }
+      data.__export_time = new Date().toISOString();
+      return data;
+    }
+
+    function evoApplyData(data) {
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('ark_evo_') === 0 && k !== EVO_GIST_ID_KEY) toRemove.push(k);
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+      Object.keys(data).forEach(k => {
+        if (k === '__export_time' || k === EVO_GIST_ID_KEY) return;
+        localStorage.setItem(k, data[k]);
+      });
+    }
+
+    function showCloudModal() {
+      const token = evoGetToken();
+      const id = evoGetGistId();
+      let html =
+        '<div style="text-align:left;">' +
+        '<h2 style="color:var(--accent,#9ef916);text-align:center;">☁️ GitHub 云同步</h2>' +
+        '<p style="font-size:13px;color:var(--muted,#b8a8d8);">备份/恢复本游戏进度到 GitHub Gist。</p>';
+      if (token) {
+        html += '<p style="font-size:12px;color:#9ef916;">✅ 已通过大厅登录 GitHub</p>';
+      } else {
+        html += '<p style="font-size:12px;color:#ff3d7f;">⚠️ 尚未登录 GitHub。请先返回 <a href="index.html" style="color:#9ef916;">游戏大厅</a> 点「☁️ GitHub 登录」。</p>';
+      }
+      html += '<p style="font-size:12px;color:var(--muted,#b8a8d8);">' + (id ? '存档ID：<span style="color:#9ef916;word-break:break-all;">' + id + '</span>' : '尚未创建云端存档') + '</p>' +
+        '</div>' +
+        '<div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+          '<button class="btn" id="evoUpload" ' + (token ? '' : 'disabled') + '>⬆️ 上传</button>' +
+          '<button class="btn secondary" id="evoDownload" ' + (token && id ? '' : 'disabled') + '>⬇️ 下载</button>' +
+          '<a class="btn secondary" href="index.html">返回大厅</a>' +
+          '<button class="btn secondary" id="evoClose">关闭</button>' +
+        '</div>' +
+        '<div id="evoStatus" style="margin-top:12px;font-size:12px;color:var(--muted,#b8a8d8);min-height:18px;text-align:center;"></div>';
+
+      const overlay = document.createElement('div');
+      overlay.id = 'evoCloudOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(10,5,20,0.82);display:flex;align-items:center;justify-content:center;z-index:600;padding:16px;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'width:min(440px,96vw);background:#1a1330;border-radius:18px;padding:24px;border:1px solid rgba(158,249,22,0.2);';
+      modal.innerHTML = html;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      const status = msg => { const el = document.getElementById('evoStatus'); if (el) el.textContent = msg; };
+      const close = () => document.body.removeChild(overlay);
+
+      document.getElementById('evoClose').onclick = close;
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      document.getElementById('evoUpload').onclick = () => evoUpload(status);
+      document.getElementById('evoDownload').onclick = () => evoDownload(status, close);
+    }
+
+    function evoGhReq(method, url, body) {
+      return fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': 'token ' + evoGetToken(),
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: body ? JSON.stringify(body) : null
+      });
+    }
+
+    async function evoUpload(status) {
+      const token = evoGetToken();
+      if (!token) { status('❌ 请先登录'); return; }
+      status('⏳ 上传中...');
+      try {
+        const data = evoCollectData();
+        let id = evoGetGistId();
+        if (id) {
+          const res = await evoGhReq('PATCH', 'https://api.github.com/gists/' + id, {
+            description: '精灵方舟：进化 云存档',
+            files: { [EVO_GIST_FILE]: { content: JSON.stringify(data, null, 2) } }
+          });
+          if (res.status === 404 || res.status === 401 || res.status === 403) {
+            evoSetGistId('');
+            const createRes = await evoGhReq('POST', 'https://api.github.com/gists', {
+              description: '精灵方舟：进化 云存档',
+              public: false,
+              files: { [EVO_GIST_FILE]: { content: JSON.stringify(data, null, 2) } }
+            });
+            if (!createRes.ok) throw new Error('HTTP ' + createRes.status);
+            const json = await createRes.json();
+            evoSetGistId(json.id);
+          } else if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+          }
+        } else {
+          const res = await evoGhReq('POST', 'https://api.github.com/gists', {
+            description: '精灵方舟：进化 云存档',
+            public: false,
+            files: { [EVO_GIST_FILE]: { content: JSON.stringify(data, null, 2) } }
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const json = await res.json();
+          evoSetGistId(json.id);
+        }
+        status('✅ 已上传到云端');
+      } catch (e) {
+        status('❌ 上传失败：' + e.message);
+      }
+    }
+
+    async function evoDownload(status, close) {
+      const token = evoGetToken();
+      if (!token) { status('❌ 请先登录'); return; }
+      const id = evoGetGistId();
+      if (!id) { status('❌ 尚无云端存档'); return; }
+      status('⏳ 下载中...');
+      try {
+        const res = await evoGhReq('GET', 'https://api.github.com/gists/' + id, null);
+        if (!res.ok) {
+          if (res.status === 404 || res.status === 401 || res.status === 403) {
+            evoSetGistId('');
+            throw new Error('存档不可访问，已清空ID');
+          }
+          throw new Error('HTTP ' + res.status);
+        }
+        const json = await res.json();
+        const f = json.files[EVO_GIST_FILE];
+        if (!f) throw new Error('存档文件不存在');
+        const data = JSON.parse(f.content);
+        evoApplyData(data);
+        status('✅ 已恢复，即将刷新...');
+        setTimeout(() => location.reload(), 1200);
+      } catch (e) {
+        status('❌ 下载失败：' + e.message);
+      }
     }
 
     // ========================= 输入 =========================
