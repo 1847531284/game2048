@@ -29,7 +29,7 @@
       display: flex; flex-direction: column; align-items: center;
       padding: 24px 16px 48px;
     }
-    .header { text-align: center; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 20px; }
     .header h1 {
       font-size: clamp(28px, 6vw, 44px);
       font-weight: 900;
@@ -41,10 +41,43 @@
       -webkit-text-fill-color: transparent;
     }
     .header p { margin: 8px 0 0; color: var(--muted); font-size: 14px; letter-spacing: 4px; }
+
+    /* 云同步顶栏 */
+    .cloud-bar {
+      width: min(960px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(217,110,255,0.18);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 22px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .cloud-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .cloud-status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+    .cloud-status.online .dot { background: var(--toxic); box-shadow: 0 0 8px var(--toxic); }
+    .cloud-status .user { color: var(--accent-soft); font-weight: 700; }
+    .cloud-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #7a18b8);
+      border: none; border-radius: 10px; padding: 9px 16px;
+      font-size: 13px; font-weight: 700; color: #fff; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(176,38,255,0.25);
+      transition: transform .1s, filter .2s;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(0); }
+    .btn.secondary { background: var(--panel-light); color: var(--text); box-shadow: none; }
+    .btn.ghost { background: transparent; border: 1px solid rgba(217,110,255,0.4); color: var(--accent-soft); box-shadow: none; }
+    .btn.danger { background: linear-gradient(135deg, var(--danger), #b8264f); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+    .btn.small { padding: 6px 10px; font-size: 12px; }
+
     .games-grid {
       width: min(960px, 100%);
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 18px;
     }
     .game-card {
@@ -52,14 +85,12 @@
       background: var(--panel);
       border-radius: 18px;
       padding: 22px 20px;
-      cursor: pointer;
       border: 1px solid rgba(217,110,255,0.15);
       overflow: hidden;
       transition: transform .2s, border-color .2s, box-shadow .2s;
-      text-decoration: none;
       color: inherit;
       display: flex; flex-direction: column;
-      min-height: 180px;
+      min-height: 200px;
     }
     .game-card::before {
       content: '';
@@ -73,7 +104,6 @@
       border-color: var(--card-color, var(--accent));
       box-shadow: 0 12px 28px rgba(0,0,0,0.45), 0 0 18px var(--card-color, var(--accent));
     }
-    .game-card:active { transform: translateY(-1px); }
     .game-icon { font-size: 48px; line-height: 1; margin-bottom: 12px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)); }
     .game-title { font-size: 20px; font-weight: 800; margin: 0 0 4px; color: var(--card-color, var(--accent-soft)); }
     .game-subtitle { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin: 0 0 12px; }
@@ -81,10 +111,53 @@
     .game-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
     .tag { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: rgba(255,255,255,0.08); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
     .badge-new { position: absolute; top: 14px; right: 14px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 8px; letter-spacing: 1px; }
+    .game-actions {
+      display: flex; gap: 8px; margin-top: 14px; padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .game-actions .play-btn {
+      flex: 1; text-align: center; text-decoration: none;
+      background: linear-gradient(135deg, var(--card-color, var(--accent)), rgba(0,0,0,0.3));
+      color: #fff; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 700;
+      transition: filter .2s;
+    }
+    .game-actions .play-btn:hover { filter: brightness(1.15); }
+
     .footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7; }
     .footer a { color: var(--accent-soft); text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
     @media (max-width: 600px) { .games-grid { grid-template-columns: 1fr; } }
+
+    /* 弹窗 */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(10,5,20,0.82);
+      display: none; align-items: center; justify-content: center; z-index: 500; padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      width: min(440px, 96vw); max-height: 88vh; overflow-y: auto;
+      background: var(--panel); border-radius: 18px; padding: 24px;
+      border: 1px solid rgba(217,110,255,0.2); text-align: center;
+    }
+    .modal h2 { margin: 0 0 8px; color: var(--accent-soft); font-size: 22px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 6px 0; }
+    .user-code-box {
+      font-size: 36px; font-weight: 900; letter-spacing: 6px;
+      color: var(--gold); background: var(--panel-light);
+      padding: 16px; border-radius: 12px; margin: 16px 0;
+      border: 2px dashed rgba(255,209,102,0.4);
+      font-family: 'Courier New', monospace;
+    }
+    .modal-actions { margin-top: 18px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      background: var(--panel-light); color: var(--text); padding: 10px 18px;
+      border-radius: 10px; font-size: 13px; z-index: 600;
+      opacity: 0; transition: opacity .25s; pointer-events: none;
+      border: 1px solid rgba(217,110,255,0.3); max-width: 90vw;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -92,17 +165,48 @@
     <h1>精灵方舟 · 游戏大厅</h1>
     <p>GAME HALL</p>
   </div>
+
+  <!-- 云同步顶栏 -->
+  <div class="cloud-bar">
+    <div class="cloud-status" id="cloudStatus">
+      <span class="dot"></span>
+      <span id="cloudStatusText">未登录 GitHub</span>
+    </div>
+    <div class="cloud-actions">
+      <button class="btn small" id="btnLogin">☁️ GitHub 登录</button>
+      <button class="btn small ghost" id="btnLogout" style="display:none;">退出登录</button>
+      <button class="btn small secondary" id="btnBackupAll" style="display:none;">全量备份</button>
+      <button class="btn small secondary" id="btnRestoreAll" style="display:none;">全量恢复</button>
+    </div>
+  </div>
+
   <div class="games-grid" id="gamesGrid"></div>
+
   <div class="footer">
     <div>所有游戏均可在浏览器中直接游玩，进度自动保存到本地。</div>
     <div style="margin-top:6px;">
       <a href="https://github.com/1847531284/game2048" target="_blank" rel="noopener">GitHub 仓库</a> · 持续更新中
     </div>
   </div>
+
+  <!-- 弹窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
   <script>
-    // ===== 游戏列表（新增游戏只需在此添加一项） =====
+    // ===== OAuth 配置 =====
+    const OAUTH_CLIENT_ID = 'Ov23limlnZ3RuOB3eFYa';
+    const OAUTH_SCOPE = 'gist';
+    const SHARED_TOKEN_KEY = 'ark_shared_github_token';  // 所有游戏共享
+    const SHARED_USER_KEY = 'ark_shared_github_user';    // 记录登录用户名（localStorage，非机密）
+
+    // ===== 游戏列表（新增游戏只需在此添加一项，prefix 必须与游戏内 localStorage 键名前缀一致） =====
     const GAMES = [
       {
+        id: 'mut',
         title: '精灵方舟：变异',
         subtitle: 'SPIRIT ARK · MUTATION',
         icon: '🧬',
@@ -110,9 +214,13 @@
         url: 'spirit_mut.html',
         color: '#b026ff',
         tags: ['双属性', '配对合并', '病毒系统', '分化分支'],
-        isNew: true
+        isNew: true,
+        lsPrefix: 'ark_mut_',
+        gistFile: 'ark_mut_save.json',
+        gistIdKey: 'ark_mut_gist_id'
       },
       {
+        id: 'evo',
         title: '精灵方舟：进化',
         subtitle: 'SPIRIT ARK · EVOLUTION',
         icon: '🌿',
@@ -120,9 +228,13 @@
         url: 'spirit_evo.html',
         color: '#9ef916',
         tags: ['生态', '腐化净化', '进化链'],
-        isNew: false
+        isNew: false,
+        lsPrefix: 'ark_evo_',
+        gistFile: 'ark_evo_save.json',
+        gistIdKey: 'ark_evo_gist_id'
       },
       {
+        id: 'classic2048',
         title: '经典 2048',
         subtitle: 'CLASSIC 2048',
         icon: '🔢',
@@ -130,24 +242,420 @@
         url: 'classic2048.html',
         color: '#ffd166',
         tags: ['经典', '数字合并'],
-        isNew: false
+        isNew: false,
+        lsPrefix: '2048-',
+        gistFile: 'ark_2048_save.json',
+        gistIdKey: 'ark_2048_gist_id'
       }
     ];
-    const grid = document.getElementById('gamesGrid');
-    GAMES.forEach(g => {
-      const card = document.createElement('a');
-      card.className = 'game-card';
-      card.href = g.url;
-      card.style.setProperty('--card-color', g.color);
-      card.innerHTML =
-        (g.isNew ? '<span class="badge-new">NEW</span>' : '') +
-        '<div class="game-icon">' + g.icon + '</div>' +
-        '<h2 class="game-title">' + g.title + '</h2>' +
-        '<div class="game-subtitle">' + g.subtitle + '</div>' +
-        '<p class="game-desc">' + g.desc + '</p>' +
-        '<div class="game-tags">' + g.tags.map(t => '<span class="tag">' + t + '</span>').join('') + '</div>';
-      grid.appendChild(card);
+
+    // ===== Token 管理 =====
+    function getToken() { return sessionStorage.getItem(SHARED_TOKEN_KEY) || ''; }
+    function setToken(t) {
+      if (t) sessionStorage.setItem(SHARED_TOKEN_KEY, t);
+      else sessionStorage.removeItem(SHARED_TOKEN_KEY);
+    }
+    function getUser() { return localStorage.getItem(SHARED_USER_KEY) || ''; }
+    function setUser(u) {
+      if (u) localStorage.setItem(SHARED_USER_KEY, u);
+      else localStorage.removeItem(SHARED_USER_KEY);
+    }
+    function getGistId(key) { return localStorage.getItem(key) || ''; }
+    function setGistId(key, id) {
+      if (id) localStorage.setItem(key, id);
+      else localStorage.removeItem(key);
+    }
+
+    // ===== UI 辅助 =====
+    function toast(msg, ms = 2500) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove('show'), ms);
+    }
+    function showModal(html) {
+      document.getElementById('modalContent').innerHTML = html;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+    function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target.id === 'modalOverlay') closeModal();
     });
+
+    function updateLoginUI() {
+      const token = getToken();
+      const user = getUser();
+      const statusEl = document.getElementById('cloudStatus');
+      const textEl = document.getElementById('cloudStatusText');
+      const btnLogin = document.getElementById('btnLogin');
+      const btnLogout = document.getElementById('btnLogout');
+      const btnBackupAll = document.getElementById('btnBackupAll');
+      const btnRestoreAll = document.getElementById('btnRestoreAll');
+      if (token) {
+        statusEl.classList.add('online');
+        textEl.innerHTML = '已登录：<span class="user">' + (user || 'GitHub 用户') + '</span>';
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = '';
+        btnBackupAll.style.display = '';
+        btnRestoreAll.style.display = '';
+      } else {
+        statusEl.classList.remove('online');
+        textEl.textContent = '未登录 GitHub';
+        btnLogin.style.display = '';
+        btnLogout.style.display = 'none';
+        btnBackupAll.style.display = 'none';
+        btnRestoreAll.style.display = 'none';
+      }
+      renderGames();
+    }
+
+    // ===== OAuth Device Flow =====
+    async function githubLogin() {
+      try {
+        showModal('<h2>正在请求 GitHub 授权码...</h2><p>请稍候</p>');
+        // ① 请求 device code
+        const codeRes = await fetch('https://github.com/login/device/code', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: OAUTH_CLIENT_ID, scope: OAUTH_SCOPE })
+        });
+        if (!codeRes.ok) throw new Error('请求授权码失败 HTTP ' + codeRes.status);
+        const codeData = await codeRes.json();
+        const { device_code, user_code, verification_uri, expires_in, interval } = codeData;
+
+        // ② 显示验证码弹窗
+        showModal(
+          '<h2>🔐 GitHub 登录</h2>' +
+          '<p>1. 点击下方按钮打开 GitHub 授权页</p>' +
+          '<p>2. 在 GitHub 页面输入以下验证码：</p>' +
+          '<div class="user-code-box">' + user_code + '</div>' +
+          '<p>3. 点击「Authorize」授权</p>' +
+          '<p style="font-size:11px;color:var(--muted);">验证码 ' + Math.floor(expires_in / 60) + ' 分钟内有效</p>' +
+          '<div class="modal-actions">' +
+            '<a class="btn" href="' + verification_uri + '" target="_blank" rel="noopener">打开 GitHub 授权页</a>' +
+            '<button class="btn ghost" onclick="closeModal()">取消</button>' +
+          '</div>' +
+          '<div id="loginStatus" style="margin-top:14px;font-size:12px;color:var(--muted);min-height:18px;">等待授权中...</div>'
+        );
+
+        // ③ 轮询获取 token
+        const pollInterval = (interval || 5) * 1000;
+        const deadline = Date.now() + (expires_in - 30) * 1000;
+        const statusEl = () => document.getElementById('loginStatus');
+
+        while (Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, pollInterval));
+          try {
+            const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+              method: 'POST',
+              headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                client_id: OAUTH_CLIENT_ID,
+                device_code: device_code,
+                grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+              })
+            });
+            const tokenData = await tokenRes.json();
+            if (tokenData.access_token) {
+              setToken(tokenData.access_token);
+              // 拉取用户信息
+              try {
+                const uRes = await fetch('https://api.github.com/user', {
+                  headers: { 'Authorization': 'token ' + tokenData.access_token, 'Accept': 'application/vnd.github+json' }
+                });
+                if (uRes.ok) {
+                  const u = await uRes.json();
+                  setUser(u.login);
+                }
+              } catch (e) {}
+              closeModal();
+              toast('✅ 登录成功');
+              updateLoginUI();
+              return;
+            }
+            if (tokenData.error === 'authorization_pending') {
+              if (statusEl()) statusEl().textContent = '等待你在 GitHub 页面授权...';
+              continue;
+            }
+            if (tokenData.error === 'slow_down') {
+              if (statusEl()) statusEl().textContent = '查询频率过高，放慢一点...';
+              await new Promise(r => setTimeout(r, 3000));
+              continue;
+            }
+            if (tokenData.error === 'expired_token') {
+              closeModal();
+              toast('❌ 验证码已过期，请重新登录');
+              return;
+            }
+            if (tokenData.error === 'access_denied') {
+              closeModal();
+              toast('❌ 已取消授权');
+              return;
+            }
+            throw new Error(tokenData.error_description || tokenData.error || '未知错误');
+          } catch (e) {
+            // 网络错误，继续重试
+            if (statusEl()) statusEl().textContent = '网络错误，重试中...';
+          }
+        }
+        closeModal();
+        toast('❌ 登录超时');
+      } catch (e) {
+        closeModal();
+        toast('❌ 登录失败：' + e.message);
+      }
+    }
+
+    function githubLogout() {
+      setToken('');
+      setUser('');
+      toast('✅ 已退出登录');
+      updateLoginUI();
+    }
+
+    // ===== Gist 操作 =====
+    function ghRequest(method, url, body) {
+      return fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': 'token ' + getToken(),
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: body ? JSON.stringify(body) : null
+      });
+    }
+
+    function collectGameData(prefix) {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf(prefix) !== 0) continue;
+        // 排除共享 token 和所有 gist_id（gist_id 不上传，避免被误删）
+        if (k === SHARED_TOKEN_KEY) continue;
+        if (k.endsWith('_gist_id')) continue;
+        if (k === SHARED_USER_KEY) continue;
+        data[k] = localStorage.getItem(k);
+      }
+      return data;
+    }
+
+    function collectAllGameData() {
+      const data = {};
+      GAMES.forEach(g => {
+        const gameData = collectGameData(g.lsPrefix);
+        Object.keys(gameData).forEach(k => { data[k] = gameData[k]; });
+      });
+      data.__export_time = new Date().toISOString();
+      return data;
+    }
+
+    function applyGameData(prefix, data) {
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf(prefix) !== 0) continue;
+        if (k === SHARED_TOKEN_KEY) continue;
+        if (k.endsWith('_gist_id')) continue;  // 保留 gist_id
+        if (k === SHARED_USER_KEY) continue;
+        toRemove.push(k);
+      }
+      toRemove.forEach(k => localStorage.removeItem(k));
+      Object.keys(data).forEach(k => {
+        if (k === '__export_time') return;
+        if (k === SHARED_TOKEN_KEY) return;
+        if (k === SHARED_USER_KEY) return;
+        if (k.endsWith('_gist_id')) return;  // 不覆盖 gist_id
+        localStorage.setItem(k, data[k]);
+      });
+    }
+
+    async function createGist(filename, data, description) {
+      const res = await ghRequest('POST', 'https://api.github.com/gists', {
+        description: description || '精灵方舟云存档',
+        public: false,
+        files: { [filename]: { content: JSON.stringify(data, null, 2) } }
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error('HTTP ' + res.status + '：' + txt.slice(0, 150));
+      }
+      const json = await res.json();
+      return json.id;
+    }
+
+    async function updateGist(id, filename, data, description) {
+      const res = await ghRequest('PATCH', 'https://api.github.com/gists/' + id, {
+        description: description || '精灵方舟云存档',
+        files: { [filename]: { content: JSON.stringify(data, null, 2) } }
+      });
+      if (res.status === 404 || res.status === 401 || res.status === 403) {
+        // gist 不存在或无权访问 → 新建
+        return null;
+      }
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error('HTTP ' + res.status + '：' + txt.slice(0, 150));
+      }
+      return id;
+    }
+
+    async function fetchGist(id, filename) {
+      const res = await ghRequest('GET', 'https://api.github.com/gists/' + id, null);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error('HTTP ' + res.status + '：' + txt.slice(0, 150));
+      }
+      const json = await res.json();
+      const f = json.files[filename];
+      if (!f) throw new Error('存档文件不存在');
+      return JSON.parse(f.content);
+    }
+
+    // ===== 单游戏上传/下载 =====
+    async function uploadGame(game) {
+      const token = getToken();
+      if (!token) { toast('❌ 请先登录 GitHub'); return; }
+      toast('⏳ 正在上传 ' + game.title + '...');
+      try {
+        const data = collectGameData(game.lsPrefix);
+        data.__export_time = new Date().toISOString();
+        let id = getGistId(game.gistIdKey);
+        if (id) {
+          const newId = await updateGist(id, game.gistFile, data, game.title + ' 云存档');
+          if (newId === null) {
+            // 旧 gist 不可访问，新建
+            setGistId(game.gistIdKey, '');
+            id = await createGist(game.gistFile, data, game.title + ' 云存档');
+            setGistId(game.gistIdKey, id);
+          }
+        } else {
+          id = await createGist(game.gistFile, data, game.title + ' 云存档');
+          setGistId(game.gistIdKey, id);
+        }
+        toast('✅ ' + game.title + ' 已上传');
+      } catch (e) {
+        toast('❌ 上传失败：' + e.message, 4000);
+      }
+    }
+
+    async function downloadGame(game) {
+      const token = getToken();
+      if (!token) { toast('❌ 请先登录 GitHub'); return; }
+      const id = getGistId(game.gistIdKey);
+      if (!id) { toast('❌ ' + game.title + ' 尚无云端存档，请先上传'); return; }
+      toast('⏳ 正在下载 ' + game.title + '...');
+      try {
+        const data = await fetchGist(id, game.gistFile);
+        applyGameData(game.lsPrefix, data);
+        toast('✅ ' + game.title + ' 已恢复');
+      } catch (e) {
+        if (e.message.indexOf('404') !== -1 || e.message.indexOf('401') !== -1 || e.message.indexOf('403') !== -1) {
+          setGistId(game.gistIdKey, '');
+          toast('❌ 云端存档不可访问，已清空ID，请重新上传', 4000);
+        } else {
+          toast('❌ 下载失败：' + e.message, 4000);
+        }
+      }
+    }
+
+    // ===== 全量备份/恢复 =====
+    async function backupAll() {
+      const token = getToken();
+      if (!token) { toast('❌ 请先登录 GitHub'); return; }
+      toast('⏳ 正在全量备份...');
+      try {
+        const data = collectAllGameData();
+        // 全量备份用统一的 Gist，包含所有游戏数据
+        const ALL_FILE = 'ark_all_save.json';
+        const ALL_ID_KEY = 'ark_all_gist_id';
+        let id = getGistId(ALL_ID_KEY);
+        if (id) {
+          const newId = await updateGist(id, ALL_FILE, data, '精灵方舟全量备份');
+          if (newId === null) {
+            setGistId(ALL_ID_KEY, '');
+            id = await createGist(ALL_FILE, data, '精灵方舟全量备份');
+            setGistId(ALL_ID_KEY, id);
+          }
+        } else {
+          id = await createGist(ALL_FILE, data, '精灵方舟全量备份');
+          setGistId(ALL_ID_KEY, id);
+        }
+        toast('✅ 全量备份完成');
+      } catch (e) {
+        toast('❌ 备份失败：' + e.message, 4000);
+      }
+    }
+
+    async function restoreAll() {
+      const token = getToken();
+      if (!token) { toast('❌ 请先登录 GitHub'); return; }
+      const ALL_ID_KEY = 'ark_all_gist_id';
+      const id = getGistId(ALL_ID_KEY);
+      if (!id) { toast('❌ 尚无全量备份，请先备份'); return; }
+      if (!confirm('全量恢复会覆盖所有游戏的本地存档，确定继续？')) return;
+      toast('⏳ 正在全量恢复...');
+      try {
+        const data = await fetchGist(id, 'ark_all_save.json');
+        GAMES.forEach(g => applyGameData(g.lsPrefix, data));
+        toast('✅ 全量恢复完成，建议刷新页面');
+        setTimeout(() => location.reload(), 1500);
+      } catch (e) {
+        if (e.message.indexOf('404') !== -1 || e.message.indexOf('401') !== -1 || e.message.indexOf('403') !== -1) {
+          setGistId(ALL_ID_KEY, '');
+          toast('❌ 全量备份不可访问，已清空ID', 4000);
+        } else {
+          toast('❌ 恢复失败：' + e.message, 4000);
+        }
+      }
+    }
+
+    // ===== 渲染游戏卡片 =====
+    function renderGames() {
+      const grid = document.getElementById('gamesGrid');
+      grid.innerHTML = '';
+      GAMES.forEach(g => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.style.setProperty('--card-color', g.color);
+        const hasGistId = !!getGistId(g.gistIdKey);
+        const isLoggedIn = !!getToken();
+        card.innerHTML =
+          (g.isNew ? '<span class="badge-new">NEW</span>' : '') +
+          '<div class="game-icon">' + g.icon + '</div>' +
+          '<h2 class="game-title">' + g.title + '</h2>' +
+          '<div class="game-subtitle">' + g.subtitle + '</div>' +
+          '<p class="game-desc">' + g.desc + '</p>' +
+          '<div class="game-tags">' + g.tags.map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' +
+          '<div class="game-actions">' +
+            '<a class="play-btn" href="' + g.url + '">▶ 开始游戏</a>' +
+            '<button class="btn small secondary" data-act="up" ' + (isLoggedIn ? '' : 'disabled') + ' title="上传到云端">⬆️</button>' +
+            '<button class="btn small secondary" data-act="down" ' + (isLoggedIn && hasGistId ? '' : 'disabled') + ' title="从云端下载">⬇️</button>' +
+          '</div>';
+        card.querySelectorAll('button[data-act]').forEach(btn => {
+          btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const act = btn.getAttribute('data-act');
+            if (act === 'up') uploadGame(g);
+            else if (act === 'down') downloadGame(g);
+          };
+        });
+        grid.appendChild(card);
+      });
+    }
+
+    // ===== 绑定按钮 =====
+    document.getElementById('btnLogin').onclick = githubLogin;
+    document.getElementById('btnLogout').onclick = githubLogout;
+    document.getElementById('btnBackupAll').onclick = backupAll;
+    document.getElementById('btnRestoreAll').onclick = restoreAll;
+
+    // ===== 启动 =====
+    updateLoginUI();
   </script>
 </body>
 </html>
