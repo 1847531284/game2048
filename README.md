@@ -60,3 +60,4 @@ game2048/
 └── README.md           # 本说明文件
 ```
 <!-- trigger rebuild Sun Jul  5 13:53:37 UTC 2026 -->
+<!-- force 1783260419 -->
