@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>精灵方舟：变异</title>
+  <style>
+    :root {
+      --bg: #161024;
+      --panel: #241a3a;
+      --panel-light: #2f2350;
+      --text: #f3e8ff;
+      --muted: #b8a8d8;
+      --accent: #b026ff;
+      --accent-soft: #d96eff;
+      --danger: #ff3d7f;
+      --gold: #ffd166;
+      --toxic: #9ef916;
+      --radius: 14px;
+      --shadow: 0 12px 30px rgba(0,0,0,0.45);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      background:
+        radial-gradient(circle at 15% 12%, rgba(176,38,255,0.14) 0%, transparent 42%),
+        radial-gradient(circle at 85% 88%, rgba(217,110,255,0.10) 0%, transparent 42%),
+        var(--bg);
+      color: var(--text);
+      display: flex; flex-direction: column; align-items: center;
+      overflow-x: hidden;
+      min-height: 100%;
+    }
+    h1, h2, h3 { font-family: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', serif; margin: 0; }
+
+    /* 通用按钮 */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #7a18b8);
+      border: none; border-radius: 12px; padding: 12px 26px;
+      font-size: 15px; font-weight: 700; color: #fff; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(176,38,255,0.30);
+      transition: transform .1s, filter .2s;
+    }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(0); }
+    .btn.secondary { background: var(--panel-light); color: var(--text); box-shadow: none; }
+    .btn.ghost { background: transparent; border: 1px solid rgba(217,110,255,0.4); color: var(--accent-soft); box-shadow: none; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+    .btn.danger { background: linear-gradient(135deg, var(--danger), #b8264f); }
+
+    .btn-icon {
+      background: var(--panel); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text); border-radius: 10px; width: 38px; height: 38px;
+      display: grid; place-items: center; cursor: pointer; font-size: 16px;
+      transition: transform .1s, background .2s;
+    }
+    .btn-icon:hover { background: var(--panel-light); }
+    .btn-icon:active { transform: scale(0.94); }
+
+    /* 开始菜单 */
+    .menu-overlay {
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(176,38,255,0.18) 0%, transparent 50%),
+        var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 300; padding: 20px; overflow-y: auto;
+    }
+    .menu-box {
+      width: min(480px, 96vw);
+      background: var(--panel);
+      border-radius: 22px; padding: 28px;
+      box-shadow: var(--shadow); text-align: center;
+      border: 1px solid rgba(217,110,255,0.18);
+    }
+    .menu-box h1 { font-size: 34px; color: var(--accent-soft); letter-spacing: 3px; }
+    .menu-box .subtitle { color: var(--muted); font-size: 13px; margin: 8px 0 22px; }
+    .menu-section { margin: 16px 0; text-align: left; }
+    .menu-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .option-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .option-btn {
+      flex: 1; min-width: 70px;
+      background: var(--panel-light); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text); border-radius: 10px; padding: 10px 12px;
+      cursor: pointer; font-size: 14px; font-weight: 600;
+      transition: background .2s, border-color .2s;
+    }
+    .option-btn:hover { background: rgba(217,110,255,0.10); }
+    .option-btn.selected { border-color: var(--accent); background: rgba(176,38,255,0.18); color: var(--accent-soft); }
+    .menu-desc { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .menu-actions { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* 顶部栏 */
+    .topbar {
+      width: min(580px, 98vw);
+      margin-top: 8px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .topbar .title { font-size: 18px; font-weight: 700; color: var(--accent-soft); }
+    .topbar .zone-name { color: var(--muted); font-size: 13px; }
+    .topbar-actions { display: flex; gap: 6px; }
+
+    /* HUD */
+    .hud {
+      width: min(580px, 98vw);
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      margin-top: 10px;
+    }
+    .hud-card {
+      background: var(--panel); border-radius: 12px; padding: 8px 6px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .hud-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .hud-card .value { font-size: 18px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .hud-card .value.accent { color: var(--accent-soft); }
+    .hud-card .value.gold { color: var(--gold); }
+    .hud-card .value.toxic { color: var(--toxic); }
+
+    /* 任务面板 */
+    .task-panel {
+      width: min(580px, 98vw);
+      background: var(--panel); border-radius: 12px; padding: 10px 12px;
+      margin-top: 10px; border: 1px solid rgba(255,255,255,0.06);
+    }
+    .task-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+    .task-row .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .task-row.done .dot { background: var(--toxic); }
+    .task-row.done { color: var(--muted); text-decoration: line-through; }
+
+    /* 病毒潮进度条 */
+    .wave-bar-wrap {
+      width: min(580px, 98vw);
+      margin-top: 10px;
+      background: var(--panel); border-radius: 10px; padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .wave-bar-label { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+    .wave-bar { height: 8px; background: var(--panel-light); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+    .wave-bar-fill { height: 100%; background: linear-gradient(90deg, var(--danger), var(--accent)); transition: width .3s; }
+
+    /* 棋盘 */
+    .board-wrap {
+      width: min(560px, 94vw);
+      margin-top: 12px;
+      background: var(--panel); border-radius: 16px; padding: 10px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(217,110,255,0.14);
+      position: relative;
+    }
+    .board {
+      display: grid; gap: 6px;
+      width: 100%;
+      touch-action: none;
+    }
+    .cell {
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.25);
+      position: relative;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      overflow: hidden;
+      user-select: none;
+    }
+    .cell .v { font-size: 20px; font-weight: 900; line-height: 1; }
+    .cell .name { font-size: 9px; color: rgba(255,255,255,0.85); margin-top: 3px; line-height: 1; }
+    .cell .hp { font-size: 10px; font-weight: 800; color: var(--toxic); position: absolute; top: 3px; right: 4px; }
+    .cell .tag { font-size: 13px; position: absolute; top: 2px; left: 3px; }
+    .cell.next-virus {
+      box-shadow: inset 0 0 0 2px var(--danger);
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .cell.selectable { cursor: pointer; box-shadow: inset 0 0 0 2px var(--accent-soft); }
+
+    /* 颜色样式 */
+    .tile-red { background: linear-gradient(135deg, #ff4d6d, #c9184a); color: #fff; }
+    .tile-green { background: linear-gradient(135deg, #9ef916, #6bb800); color: #1a2a00; }
+    .tile-blue { background: linear-gradient(135deg, #4cc9f0, #2779a3); color: #fff; }
+    .tile-yellow { background: linear-gradient(135deg, #ffd166, #d4a017); color: #4a3a00; }
+    .tile-purple { background: linear-gradient(135deg, #b026ff, #6a0dad); color: #fff; }
+    .tile-gold {
+      background: linear-gradient(135deg, #ffd166, #ff9e00, #ffd166);
+      color: #4a3a00; box-shadow: 0 0 12px rgba(255,209,102,0.5);
+    }
+    .tile-virus {
+      background: linear-gradient(135deg, #2a0a1a, #5a0a2a);
+      color: var(--danger); border: 1px solid var(--danger);
+    }
+    .tile-virus .v { color: var(--danger); }
+
+    /* 技能栏 */
+    .skills {
+      width: min(580px, 98vw);
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      margin-top: 12px; margin-bottom: 16px;
+    }
+    .skill-card {
+      background: var(--panel); border-radius: 12px; padding: 10px 6px; text-align: center;
+      cursor: pointer; border: 1px solid rgba(255,255,255,0.06);
+      transition: transform .1s, border-color .2s, background .2s;
+    }
+    .skill-card:hover { background: var(--panel-light); }
+    .skill-card:active { transform: scale(0.96); }
+    .skill-card.active { border-color: var(--accent-soft); background: rgba(176,38,255,0.18); }
+    .skill-card.disabled { opacity: 0.45; cursor: not-allowed; }
+    .skill-card .icon { font-size: 22px; }
+    .skill-card .name { font-size: 12px; font-weight: 700; margin-top: 4px; }
+    .skill-card .cost { font-size: 11px; color: var(--accent-soft); margin-top: 2px; }
+    .skill-card .cost.cant { color: var(--danger); }
+
+    /* 弹窗 */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(10,5,20,0.78);
+      display: none; align-items: center; justify-content: center; z-index: 400; padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      width: min(440px, 96vw); max-height: 88vh; overflow-y: auto;
+      background: var(--panel); border-radius: 18px; padding: 22px;
+      box-shadow: var(--shadow); border: 1px solid rgba(217,110,255,0.2);
+      text-align: center;
+    }
+    .modal h2 { font-size: 22px; color: var(--accent-soft); margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 6px 0; }
+    .modal .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+    .modal .stat-row .v { color: var(--accent-soft); font-weight: 700; }
+    .modal-actions { margin-top: 18px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* 进化选择 */
+    .evo-options { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+    .evo-card {
+      flex: 1; min-width: 130px; background: var(--panel-light); border-radius: 12px; padding: 14px;
+      cursor: pointer; border: 1px solid rgba(255,255,255,0.08); text-align: center;
+      transition: transform .1s, border-color .2s;
+    }
+    .evo-card:hover { transform: translateY(-2px); border-color: var(--accent-soft); }
+    .evo-card .icon { font-size: 28px; }
+    .evo-card .name { font-weight: 700; margin-top: 6px; color: var(--accent-soft); }
+    .evo-card .desc { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+    /* 色板 */
+    .palette { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .palette-btn {
+      width: 56px; height: 56px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1);
+      cursor: pointer; font-size: 22px; display: grid; place-items: center; color: #fff; font-weight: 800;
+    }
+    .palette-btn:hover { transform: scale(1.06); }
+
+    /* 商店 */
+    .shop-card {
+      background: var(--panel-light); border-radius: 12px; padding: 12px; margin: 8px 0;
+      display: flex; align-items: center; gap: 10px; text-align: left;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .shop-card .icon { font-size: 24px; }
+    .shop-card .info { flex: 1; }
+    .shop-card .info .name { font-weight: 700; }
+    .shop-card .info .desc { font-size: 12px; color: var(--muted); }
+    .shop-card .info .lvl { font-size: 11px; color: var(--accent-soft); }
+
+    /* 帮助 */
+    .help-content { text-align: left; }
+    .help-content h3 { color: var(--accent-soft); font-size: 15px; margin: 14px 0 6px; }
+    .help-content p, .help-content li { font-size: 13px; color: var(--text); line-height: 1.6; }
+    .help-content ul { margin: 4px 0 4px 18px; padding: 0; }
+    .help-content .example { background: var(--panel-light); border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: 13px; }
+    .help-content table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+    .help-content td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 13px; }
+    .color-chip { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
+
+    /* 排行榜 */
+    .lb-row { display: flex; justify-content: space-between; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+    .lb-row .rank { color: var(--gold); font-weight: 800; width: 28px; }
+    .lb-row .nm { flex: 1; text-align: left; }
+    .lb-row .sc { color: var(--accent-soft); font-weight: 700; }
+
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--panel-light); color: var(--text); padding: 10px 18px;
+      border-radius: 10px; font-size: 14px; z-index: 500;
+      box-shadow: var(--shadow); opacity: 0; transition: opacity .25s; pointer-events: none;
+      border: 1px solid rgba(217,110,255,0.3);
+    }
+    .toast.show { opacity: 1; }
+
+    input.name-input {
+      background: var(--panel-light); border: 1px solid rgba(217,110,255,0.3); color: var(--text);
+      border-radius: 8px; padding: 10px 14px; font-size: 15px; width: 100%; margin-top: 10px;
+    }
+    .skill-hint {
+      width: min(580px,98vw); text-align: center; font-size: 12px; color: var(--accent-soft);
+      margin-top: 6px; min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 开始菜单 -->
+  <div class="menu-overlay" id="menuOverlay">
+    <div class="menu-box">
+      <h1>精灵方舟：变异</h1>
+      <div class="subtitle">紫雾笼罩方舟，基因在病毒潮中突变求生</div>
+
+      <div class="menu-section">
+        <div class="menu-label">难度选择</div>
+        <div class="option-row" id="diffOptions">
+          <button class="option-btn" data-diff="easy">轻松</button>
+          <button class="option-btn selected" data-diff="normal">普通</button>
+          <button class="option-btn" data-diff="hard">困难</button>
+        </div>
+        <div class="menu-desc" id="diffDesc">普通：病毒每8回合出现，基础血量2</div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-label">棋盘大小</div>
+        <div class="option-row" id="sizeOptions">
+          <button class="option-btn" data-size="4">4×4</button>
+          <button class="option-btn selected" data-size="5">5×5</button>
+          <button class="option-btn" data-size="6">6×6</button>
+        </div>
+        <div class="menu-desc" id="sizeDesc">5×5：更大空间，更多策略</div>
+      </div>
+
+      <div class="menu-actions">
+        <button class="btn" id="btnStart">开始游戏</button>
+        <button class="btn secondary" id="btnContinue">继续上次</button>
+      </div>
+      <div class="menu-actions">
+        <button class="btn ghost" id="btnHelp">玩法说明</button>
+        <button class="btn ghost" id="btnLB">排行榜</button>
+        <button class="btn ghost" id="btnShop">样本商店</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div id="gameView" style="display:none;">
+    <div class="topbar">
+      <div>
+        <div class="title">精灵方舟：变异</div>
+        <div class="zone-name" id="zoneName">污染区 α</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-icon" id="btnRestart" title="重启本区">↺</button>
+        <button class="btn-icon" id="btnMenu" title="主菜单">☰</button>
+        <button class="btn-icon" id="btnHelp2" title="玩法说明">?</button>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div class="hud-card"><div class="label">变异分</div><div class="value accent" id="hudScore">0</div></div>
+      <div class="hud-card"><div class="label">基因能</div><div class="value toxic" id="hudEnergy">0</div></div>
+      <div class="hud-card"><div class="label">区域</div><div class="value gold" id="hudZone">1/8</div></div>
+      <div class="hud-card"><div class="label">难度</div><div class="value" id="hudDiff">普通</div></div>
+    </div>
+
+    <div class="task-panel" id="taskPanel"></div>
+
+    <div class="wave-bar-wrap">
+      <div class="wave-bar-label"><span>病毒潮进度</span><span id="waveText">0 / 0</span></div>
+      <div class="wave-bar"><div class="wave-bar-fill" id="waveFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="skill-hint" id="skillHint"></div>
+
+    <div class="skills" id="skills"></div>
+  </div>
+
+  <!-- 通用弹窗 -->
+  <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   精灵方舟：变异  —— 单文件 HTML5 游戏
+   紫色变异主题：合并基因、对抗病毒潮、分化进化
+   ============================================================ */
+
+/* ---------- 常量定义 ---------- */
+
+// 病毒生成间隔（每N回合生成1个）—— 削弱后：比原版+2回合
+const VIRUS_INTERVAL = { easy: 10, normal: 8, hard: 6 };
+// 病毒基础血量 —— 削弱后：比原版-1
+const VIRUS_BASE_HP = { easy: 2, normal: 2, hard: 3 };
+
+// 难度描述
+const DIFF_DESC = {
+  easy: '轻松：病毒每10回合出现，基础血量2，波次更少',
+  normal: '普通：病毒每8回合出现，基础血量2',
+  hard: '困难：病毒每6回合出现，基础血量3，波次更多'
+};
+
+// 棋盘大小描述
+const SIZE_DESC = {
+  4: '4×4：标准棋盘，节奏紧凑',
+  5: '5×5：更大空间，更多策略',
+  6: '6×6：广阔天地，长线发育'
+};
+
+// 配对表：异色合并规则（核心）
+const PAIR_TABLE = {
+  'red|blue': { color: 'purple', mult: 2 },
+  'blue|red': { color: 'purple', mult: 2 },
+  'green|yellow': { color: 'purple', mult: 2 },
+  'yellow|green': { color: 'purple', mult: 2 },
+  'purple|purple': { color: 'gold', mult: 2 }
+};
+
+// 基因色样式与图标
+const COLOR_TILE_CLASS = {
+  red: 'tile-red', green: 'tile-green', blue: 'tile-blue',
+  yellow: 'tile-yellow', purple: 'tile-purple', gold: 'tile-gold'
+};
+const COLOR_ICON = { red: '🔴', green: '🟢', blue: '🔵', yellow: '🟡', purple: '🟣', gold: '⭐' };
+const COLOR_HEX = { red: '#ff4d6d', green: '#9ef916', blue: '#4cc9f0', yellow: '#ffd166', purple: '#b026ff', gold: '#ffd166' };
+const COLOR_CN = { red: '红', green: '绿', blue: '蓝', yellow: '黄', purple: '紫', gold: '金' };
+
+// 物种命名链（按数值）
+const SPECIES_NAMES = {
+  2: 'DNA碎片', 4: '基因', 8: '染色体', 16: '细胞', 32: '组织',
+  64: '器官', 128: '生物体', 256: '群落', 512: '生态系统', 1024: '变异体'
+};
+
+// 8个污染区名
+const ZONE_NAMES = ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ'];
+
+// 进化分支：Lv16 无 tag 生物触发分化（5色×2选一）
+const EVOLUTIONS = {
+  red: [
+    { key: 'flame', icon: '🔥', name: '炎细胞', desc: '每回合+1能量' },
+    { key: 'attack', icon: '⚔️', name: '攻细胞', desc: '对相邻病毒+1伤害' }
+  ],
+  green: [
+    { key: 'tree', icon: '🌳', name: '乔木', desc: '免疫病毒感染' },
+    { key: 'fungus', icon: '🍄', name: '真菌', desc: '每回合在相邻空格分裂1个Lv2' }
+  ],
+  blue: [
+    { key: 'shield', icon: '🛡️', name: '盾细胞', desc: '血量+2' },
+    { key: 'medicine', icon: '💊', name: '药细胞', desc: '每回合治愈3×3范围1血' }
+  ],
+  yellow: [
+    { key: 'energy', icon: '⚡', name: '能量胞', desc: '每回合+2能量' },
+    { key: 'light', icon: '☀️', name: '光细胞', desc: '每回合治愈全图1血' }
+  ],
+  purple: [
+    { key: 'chaos', icon: '🌀', name: '混沌胞', desc: '合并突变率+20%' },
+    { key: 'foresee', icon: '👁️', name: '预言胞', desc: '预知下波病毒位置' }
+  ]
+};
+
+// 技能（baseCost 调整后：让前期更友好）
+const SKILLS = [
+  { key: 'edit',     icon: '🧬', name: '基因编辑', baseCost: 25, desc: '选一个生物，改变其基因色' },
+  { key: 'split',    icon: '🌱', name: '细胞分裂', baseCost: 20, desc: '选一个Lv≥8生物，复制到相邻空格' },
+  { key: 'antibody', icon: '💉', name: '抗体注射', baseCost: 35, desc: '清除3×3范围内所有病毒' },
+  { key: 'mutate',   icon: '✨', name: '突变诱导', baseCost: 30, desc: '强制突变：数值×2变紫' }
+];
+
+// 升级（cost 调整后：更易购买，每级成本固定）
+const UPGRADES = [
+  { key: 'energy',   icon: '⚡', name: '能量储备', desc: '每级+20起始能量', maxLevel: 5, cost: 2 },
+  { key: 'culture',  icon: '🌱', name: '培养加速', desc: '每级+1初始方块', maxLevel: 3, cost: 3 },
+  { key: 'resist',   icon: '🛡️', name: '病毒抗性', desc: '每级生物血量+1', maxLevel: 3, cost: 4 },
+  { key: 'affinity', icon: '✨', name: '突变亲和', desc: '每级紫基因突变率+5%', maxLevel: 2, cost: 5 }
+];
+
+// 每关培育任务目标（金/紫交替升级）
+const BREED_TASKS = [
+  { color: 'gold', value: 32 },
+  { color: 'purple', value: 64 },
+  { color: 'gold', value: 64 },
+  { color: 'purple', value: 128 },
+  { color: 'gold', value: 128 },
+  { color: 'purple', value: 256 },
+  { color: 'gold', value: 256 },
+  { color: 'purple', value: 512 }
+];
+
+// 可生成的基础基因色
+const SPAWN_COLORS = ['red', 'green', 'blue', 'yellow'];
+
+/* ---------- 全局状态 ---------- */
+
+let state = null;        // 游戏状态对象
+let board = [];          // 二维棋盘（board[r][c] = cell 或 null）
+let cellIdCounter = 0;   // 方块自增ID
+let pendingEvolutions = []; // 待处理的分化选择
+let evolutionOfferedIds = new Set(); // 已提示过分化的方块ID（去重）
+let skillMode = null;    // 当前技能模式
+let selectedPalette = null; // 基因编辑选中的方块坐标
+let menuDifficulty = 'normal';
+let menuSize = 5;
+let touchStart = null;   // 触屏起点
+
+/* ---------- 工具函数 ---------- */
+
+// 读取升级等级
+function getUpgradeLevels() {
+  try {
+    const raw = localStorage.getItem('ark_mut_upgrades');
+    if (!raw) return { energy: 0, culture: 0, resist: 0, affinity: 0 };
+    return Object.assign({ energy: 0, culture: 0, resist: 0, affinity: 0 }, JSON.parse(raw));
+  } catch (e) {
+    return { energy: 0, culture: 0, resist: 0, affinity: 0 };
+  }
+}
+
+// 读取样本余额
+function getEssence() {
+  return parseInt(localStorage.getItem('ark_mut_essence') || '0', 10);
+}
+function addEssence(n) {
+  localStorage.setItem('ark_mut_essence', String(getEssence() + n));
+}
+
+// 浮层提示
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+// 物种名
+function speciesName(value) {
+  if (SPECIES_NAMES[value]) return SPECIES_NAMES[value];
+  return '生命体';
+}
+
+// 计算生物最大血量
+function computeMaxHp(value, tag) {
+  const resist = getUpgradeLevels().resist || 0;
+  let hp = Math.max(1, Math.floor(Math.log2(value))) + resist;
+  if (tag === 'shield') hp += 2;
+  return hp;
+}
+
+/* ---------- 方块创建 ---------- */
+
+// 创建生物方块
+function createCell(value, color, tag) {
+  const hp = computeMaxHp(value, tag);
+  return { id: ++cellIdCounter, type: 'creature', value: value, color: color, hp: hp, maxHp: hp, tag: tag || null };
+}
+
+// 创建病毒方块
+function createVirus(hp) {
+  return { id: ++cellIdCounter, type: 'virus', hp: hp, maxHp: hp };
+}
+
+// 创建空棋盘
+function createEmptyBoard(size) {
+  const b = [];
+  for (let r = 0; r < size; r++) {
+    const row = [];
+    for (let c = 0; c < size; c++) row.push(null);
+    b.push(row);
+  }
+  return b;
+}
+
+// 棋盘序列化快照（用字符串检测变化，避免对象引用比较Bug）
+function serializeBoard(cells) {
+  let s = '';
+  for (let r = 0; r < cells.length; r++) {
+    for (let c = 0; c < cells[r].length; c++) {
+      const cell = cells[r][c];
+      if (!cell) { s += '.'; }
+      else if (cell.type === 'virus') { s += 'V' + cell.hp + ','; }
+      else { s += cell.color[0] + cell.value + 'h' + cell.hp + 't' + (cell.tag || '') + ';'; }
+    }
+    s += '|';
+  }
+  return s;
+}
+
+// 获取四邻格
+function getNeighbors(r, c) {
+  const res = [];
+  if (r > 0) res.push([r - 1, c]);
+  if (r < state.size - 1) res.push([r + 1, c]);
+  if (c > 0) res.push([r, c - 1]);
+  if (c < state.size - 1) res.push([r, c + 1]);
+  return res;
+}
+
+// 收集所有空格
+function getEmptyCells() {
+  const arr = [];
+  for (let r = 0; r < state.size; r++)
+    for (let c = 0; c < state.size; c++)
+      if (!board[r][c]) arr.push([r, c]);
+  return arr;
+}
+
+/* ---------- 合并逻辑（核心） ---------- */
+
+// 判断两个生物是否可合并
+function canMerge(a, b) {
+  if (!a || !b || a.type !== 'creature' || b.type !== 'creature') return false;
+  if (a.value !== b.value) return false;
+  if (a.color === b.color) return true;            // 同色同值
+  const key = a.color + '|' + b.color;
+  if (PAIR_TABLE[key]) return true;                // 配对表异色
+  if (a.color === 'purple' || b.color === 'purple') return true; // 紫基因突变
+  return false; // 其他异色（红+绿等）不可合并
+}
+
+// 执行合并（同色/配对表）
+function doMerge(a, b) {
+  const parentTag = a.tag || b.tag || null; // 合并产物继承父代tag
+  let nv, color;
+  if (a.color === b.color) {
+    // 同色合并：×2升一级，色不变
+    nv = a.value * 2;
+    color = a.color;
+    state.score += nv;
+    state.energy += Math.floor(nv / 10);
+  } else {
+    const key = a.color + '|' + b.color;
+    if (PAIR_TABLE[key]) {
+      // 配对表合并：按表合成
+      const entry = PAIR_TABLE[key];
+      nv = a.value * entry.mult;
+      color = entry.color;
+      state.score += nv;
+    } else if (a.color === 'purple' || b.color === 'purple') {
+      // 紫基因突变
+      return doMutate(a, b, parentTag);
+    } else {
+      return null; // 不应到达
+    }
+  }
+  return createCell(nv, color, parentTag);
+}
+
+// 紫基因突变（紫+其他同值色，不在配对表中）—— 降低紫化概率
+function doMutate(a, b, inheritedTag) {
+  let chaosBonus = 0;
+  if (a.tag === 'chaos' || b.tag === 'chaos') chaosBonus += 0.20; // 原0.30改0.20
+  const aff = getUpgradeLevels().affinity || 0;
+  const rate = Math.min(0.65, 0.25 + chaosBonus + aff * 0.05); // 原0.5基础改0.25，上限0.95改0.65
+  let nv, color;
+  if (Math.random() < rate) {
+    nv = a.value * 4; color = 'purple';   // 突变成功：×4变紫
+  } else {
+    nv = a.value * 2;                      // 突变失败：×2
+    // 失败时保持其中一个父代颜色（而非随机变色）
+    color = (Math.random() < 0.5) ? a.color : b.color;
+  }
+  state.score += nv;
+  return createCell(nv, color, inheritedTag);
+}
+
+/* ---------- 滑动算法 ---------- */
+
+// 段内压缩+合并（连锁反应：合并产物可与下一个继续合并）
+function compactAndMerge(cells) {
+  const filtered = cells.filter(c => c !== null);
+  const result = [];
+  let i = 0;
+  while (i < filtered.length) {
+    let current = filtered[i];
+    let j = i + 1;
+    while (j < filtered.length && canMerge(current, filtered[j])) {
+      current = doMerge(current, filtered[j]);
+      j++;
+    }
+    result.push(current);
+    i = j;
+  }
+  return result; // 压缩后数组（可能短于输入）
+}
+
+// 处理一行/一列的滑动（virus 作为墙切分段）
+// dir: 'forward' 朝索引0压缩，'backward' 朝末端压缩
+function slideLine(line, dir) {
+  const n = line.length;
+  const work = dir === 'forward' ? line.slice() : line.slice().reverse();
+  const result = new Array(n).fill(null);
+  let segStart = 0;
+  for (let i = 0; i <= n; i++) {
+    const isBoundary = (i === n) || (work[i] && work[i].type === 'virus');
+    if (isBoundary) {
+      const segCells = [];
+      for (let k = segStart; k < i; k++) if (work[k]) segCells.push(work[k]);
+      const merged = compactAndMerge(segCells);
+      for (let k = 0; k < merged.length; k++) result[segStart + k] = merged[k];
+      if (i < n && work[i] && work[i].type === 'virus') {
+        result[i] = work[i]; // 病毒作为墙保留原位
+        segStart = i + 1;
+      }
+    }
+  }
+  return dir === 'forward' ? result : result.reverse();
+}
+
+// 主滑动入口
+function slide(direction) {
+  if (skillMode) return; // 技能模式下禁止滑动
+  const before = serializeBoard(board);
+  const size = state.size;
+
+  if (direction === 'left' || direction === 'right') {
+    const dir = direction === 'left' ? 'forward' : 'backward';
+    for (let r = 0; r < size; r++) board[r] = slideLine(board[r], dir);
+  } else {
+    const dir = direction === 'up' ? 'forward' : 'backward';
+    for (let c = 0; c < size; c++) {
+      const col = [];
+      for (let r = 0; r < size; r++) col.push(board[r][c]);
+      const newCol = slideLine(col, dir);
+      for (let r = 0; r < size; r++) board[r][c] = newCol[r];
+    }
+  }
+
+  const after = serializeBoard(board);
+  if (before === after) return; // 无变化，不计回合
+
+  // 有变化才生成新生物 + 检查进化 + afterSlide
+  spawnCreature();
+  findAndQueueEvolutions();
+  if (pendingEvolutions.length > 0) {
+    showEvolution(() => afterSlide());
+  } else {
+    afterSlide();
+  }
+}
+
+// 生成新生物（90% Lv2，10% Lv4，4色随机）
+function spawnCreature() {
+  const empties = getEmptyCells();
+  if (empties.length === 0) return;
+  const pos = empties[Math.floor(Math.random() * empties.length)];
+  const value = Math.random() < 0.1 ? 4 : 2;
+  const color = SPAWN_COLORS[Math.floor(Math.random() * SPAWN_COLORS.length)];
+  board[pos[0]][pos[1]] = createCell(value, color);
+}
+
+/* ---------- 进化系统 ---------- */
+
+// 扫描棋盘，找出 Lv≥16 且无 tag 且未提示过的生物，加入待分化队列
+function findAndQueueEvolutions() {
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (!cell || cell.type !== 'creature') continue;
+      if (cell.value >= 16 && !cell.tag && !evolutionOfferedIds.has(cell.id)) {
+        if (EVOLUTIONS[cell.color]) {
+          evolutionOfferedIds.add(cell.id);
+          pendingEvolutions.push({ r: r, c: c, id: cell.id });
+        }
+      }
+    }
+  }
+}
+
+// 依次弹出分化选择弹窗
+function showEvolution(onComplete) {
+  if (pendingEvolutions.length === 0) { onComplete(); return; }
+  const item = pendingEvolutions.shift();
+  const cell = board[item.r][item.c];
+  if (!cell || cell.id !== item.id || !EVOLUTIONS[cell.color]) {
+    showEvolution(onComplete); // 跳过无效项
+    return;
+  }
+  const options = EVOLUTIONS[cell.color];
+  const html =
+    '<h2>基因分化</h2>' +
+    '<p>一个 <b style="color:' + COLOR_HEX[cell.color] + '">' + COLOR_ICON[cell.color] + ' ' + speciesName(cell.value) + '</b>（Lv' + cell.value + '）已成熟，请选择分化方向：</p>' +
+    '<div class="evo-options">' +
+    options.map(o =>
+      '<div class="evo-card" data-evo="' + o.key + '">' +
+      '<div class="icon">' + o.icon + '</div>' +
+      '<div class="name">' + o.name + '</div>' +
+      '<div class="desc">' + o.desc + '</div>' +
+      '</div>'
+    ).join('') +
+    '</div>';
+  showModal(html, () => {
+    const cards = document.querySelectorAll('.evo-card');
+    cards.forEach(card => {
+      card.onclick = () => {
+        const key = card.getAttribute('data-evo');
+        const opt = options.find(o => o.key === key);
+        if (opt) {
+          cell.tag = opt.key;
+          // 应用即时效果
+          if (opt.key === 'shield') {
+            cell.maxHp = computeMaxHp(cell.value, cell.tag);
+            cell.hp = cell.maxHp;
+          }
+        }
+        closeModal();
+        showEvolution(onComplete); // 处理下一个
+      };
+    });
+  });
+}
+
+/* ---------- 回合处理 ---------- */
+
+// 滑动后处理：被动能量 + 标签被动 + 病毒回合 + 检查
+function afterSlide() {
+  state.energy += 3; // 被动+3（原+2改+3）
+  passivePhase();    // 标签被动效果
+  virusPhase();      // 病毒回合
+  checkTasks();      // 检查任务完成
+  if (state.tasks.every(t => t.done)) { onZoneComplete(); return; }
+  if (isGameOver()) { onGameOver(); return; }
+  updateForeseePos();
+  render();
+  save();
+}
+
+// 标签被动效果（每回合）
+function passivePhase() {
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (!cell || cell.type !== 'creature') continue;
+      if (cell.tag === 'flame') state.energy += 1;
+      if (cell.tag === 'energy') state.energy += 2;
+      if (cell.tag === 'fungus') {
+        const ns = getNeighbors(r, c);
+        for (const p of ns) {
+          if (!board[p[0]][p[1]]) {
+            board[p[0]][p[1]] = createCell(2, cell.color);
+            break; // 仅分裂1个
+          }
+        }
+      }
+      if (cell.tag === 'medicine') {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nr >= state.size || nc < 0 || nc >= state.size) continue;
+            const t = board[nr][nc];
+            if (t && t.type === 'creature' && t.hp < t.maxHp) t.hp += 1;
+          }
+        }
+      }
+    }
+  }
+  // 光细胞：每回合治愈全图1血
+  let hasLight = false;
+  for (let r = 0; r < state.size && !hasLight; r++)
+    for (let c = 0; c < state.size && !hasLight; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && cell.tag === 'light') hasLight = true;
+    }
+  if (hasLight) {
+    for (let r = 0; r < state.size; r++)
+      for (let c = 0; c < state.size; c++) {
+        const cell = board[r][c];
+        if (cell && cell.type === 'creature' && cell.hp < cell.maxHp) cell.hp += 1;
+      }
+  }
+}
+
+// 病毒回合：生成 + 感染 + 抗体反击 + 清理死亡
+function virusPhase() {
+  state.turn++;
+  const lvl = state.currentLevel;
+
+  // 生成病毒（每 N 回合）
+  if (state.turn % lvl.interval === 0) {
+    spawnVirus(lvl.baseHp);
+    state.wavesSurvived++;
+  }
+
+  // 感染：先收集所有受感染生物ID（去重），再各-1（单生物单回合最多-1，不叠加）
+  const infectedIds = new Set();
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'virus') {
+        const ns = getNeighbors(r, c);
+        for (const p of ns) {
+          const nc = board[p[0]][p[1]];
+          if (nc && nc.type === 'creature' && nc.tag !== 'tree') {
+            infectedIds.add(nc.id); // 去重
+          }
+        }
+      }
+    }
+  }
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && infectedIds.has(cell.id)) {
+        cell.hp -= 1;
+      }
+    }
+  }
+
+  // 蓝基因抗体反击：相邻病毒时，若蓝基因等级≥病毒血量，每回合对病毒+1伤害；攻细胞额外+1
+  const virusDmg = {}; // virusId -> 总伤害
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && cell.color === 'blue') {
+        const ns = getNeighbors(r, c);
+        for (const p of ns) {
+          const nc = board[p[0]][p[1]];
+          if (nc && nc.type === 'virus' && cell.value >= nc.hp) {
+            let dmg = 1;
+            if (cell.tag === 'attack') dmg += 1;
+            virusDmg[nc.id] = (virusDmg[nc.id] || 0) + dmg;
+          }
+        }
+      }
+    }
+  }
+  const killedVirus = [];
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'virus' && virusDmg[cell.id]) {
+        cell.hp -= virusDmg[cell.id];
+        if (cell.hp <= 0) killedVirus.push([r, c]);
+      }
+    }
+  }
+
+  // 清理死亡生物
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && cell.hp <= 0) {
+        board[r][c] = null;
+      }
+    }
+  }
+  // 清理被击杀病毒 + 奖励（击杀+8能量+80分）
+  for (const p of killedVirus) {
+    board[p[0]][p[1]] = null;
+    state.energy += 8;
+    state.score += 80;
+  }
+}
+
+// 生成病毒（优先使用预言位置）
+function spawnVirus(hp) {
+  const empties = getEmptyCells();
+  if (empties.length === 0) return;
+  let pos = null;
+  if (state.nextVirusPos) {
+    const p = state.nextVirusPos;
+    state.nextVirusPos = null;
+    if (!board[p[0]][p[1]]) pos = p;
+  }
+  if (!pos) pos = empties[Math.floor(Math.random() * empties.length)];
+  board[pos[0]][pos[1]] = createVirus(hp);
+}
+
+// 预言胞：预知下波病毒位置（仅当场上存在预言胞时显示）
+function updateForeseePos() {
+  state.nextVirusPos = null;
+  let hasForesee = false;
+  for (let r = 0; r < state.size && !hasForesee; r++)
+    for (let c = 0; c < state.size && !hasForesee; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && cell.tag === 'foresee') hasForesee = true;
+    }
+  if (!hasForesee) return;
+  const empties = getEmptyCells();
+  if (empties.length > 0) {
+    state.nextVirusPos = empties[Math.floor(Math.random() * empties.length)];
+  }
+}
+
+// 是否存在预言胞（用于渲染标记）
+function hasForeseeCell() {
+  for (let r = 0; r < state.size; r++)
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature' && cell.tag === 'foresee') return true;
+    }
+  return false;
+}
+
+/* ---------- 任务检查 ---------- */
+
+function checkTasks() {
+  for (const task of state.tasks) {
+    if (task.done) continue;
+    if (task.type === 'breed') {
+      for (let r = 0; r < state.size; r++) {
+        for (let c = 0; c < state.size; c++) {
+          const cell = board[r][c];
+          if (cell && cell.type === 'creature' && cell.color === task.color && cell.value >= task.value) {
+            task.done = true;
+            break;
+          }
+        }
+        if (task.done) break;
+      }
+    } else if (task.type === 'survive') {
+      if (state.wavesSurvived >= task.target) task.done = true;
+    }
+  }
+}
+
+// 是否游戏结束（棋盘满且无合并可能）
+function isGameOver() {
+  for (let r = 0; r < state.size; r++)
+    for (let c = 0; c < state.size; c++)
+      if (!board[r][c]) return false;
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      if (cell && cell.type === 'creature') {
+        if (c + 1 < state.size && canMerge(cell, board[r][c + 1])) return false;
+        if (r + 1 < state.size && canMerge(cell, board[r + 1][c])) return false;
+      }
+    }
+  }
+  return true;
+}
+
+/* ---------- 关卡生成 ---------- */
+
+function generateLevel(index) {
+  const diff = state.difficulty;
+  const interval = Math.max(3, VIRUS_INTERVAL[diff] - Math.floor(index / 3)); // 原/2改/3
+  const baseHp = VIRUS_BASE_HP[diff] + Math.floor(index / 3);                 // 原/2改/3
+  let waveTarget = 4 + index * 2;     // 原5+index*2改4+index*2
+  if (diff === 'hard') waveTarget += 2;
+  if (diff === 'easy') waveTarget = Math.max(3, waveTarget - 1);
+  if (state.size >= 6) waveTarget += 2; // 6×6棋盘+2
+  if (state.size === 5) waveTarget += 1; // 5×5棋盘+1
+  const breedSpec = BREED_TASKS[index] || BREED_TASKS[BREED_TASKS.length - 1];
+  const tasks = [
+    { type: 'breed', color: breedSpec.color, value: breedSpec.value, done: false, label: '培育 ' + COLOR_ICON[breedSpec.color] + ' Lv' + breedSpec.value + ' ' + speciesName(breedSpec.value) },
+    { type: 'survive', target: waveTarget, done: false, label: '抵御 ' + waveTarget + ' 波病毒潮' }
+  ];
+  return { index: index, interval: interval, baseHp: baseHp, waveTarget: waveTarget, tasks: tasks };
+}
+
+// setupLevel 接受 opts.score/opts.energy，state 必须有 levelStartEnergy
+function setupLevel(lvl, opts) {
+  opts = opts || {};
+  const diff = state.difficulty;
+  state.zoneIndex = lvl.index;
+  state.currentLevel = lvl;
+  state.score = (opts.score !== undefined) ? opts.score : 0;
+  const upgrades = getUpgradeLevels();
+  state.energy = (opts.energy !== undefined) ? opts.energy : (40 + upgrades.energy * 20);
+  state.levelStartScore = state.score;
+  state.levelStartEnergy = state.energy;
+  state.turn = 0;
+  state.wavesSurvived = 0;
+  state.tasks = lvl.tasks.map(t => Object.assign({}, t));
+  state.skillUses = state.skillUses || { edit: 0, split: 0, antibody: 0, mutate: 0 };
+  state.nextVirusPos = null;
+  board = createEmptyBoard(state.size);
+
+  // 初始生物数：公式 = max(2, floor(size²/8)) + culture + (easy?1:0)
+  const culture = upgrades.culture || 0;
+  const initCount = Math.max(2, Math.floor(state.size * state.size / 8)) + culture + (diff === 'easy' ? 1 : 0);
+  for (let i = 0; i < initCount; i++) spawnCreature();
+
+  pendingEvolutions = [];
+  evolutionOfferedIds = new Set();
+  skillMode = null;
+  render();
+  save();
+}
+
+// loadLevel 透传 opts 到 setupLevel
+function loadLevel(index, opts) {
+  const lvl = generateLevel(index);
+  setupLevel(lvl, opts);
+}
+
+// 下一区
+function nextZone() {
+  state.zoneIndex++;
+  if (state.zoneIndex >= 8) { onGameComplete(); return; }
+  loadLevel(state.zoneIndex, { energy: state.energy });
+}
+
+// 重试当前区
+function retryLevel() {
+  loadLevel(state.zoneIndex, { score: state.levelStartScore, energy: state.levelStartEnergy });
+}
+
+/* ---------- 区域完成 / 游戏结束 ---------- */
+
+function onZoneComplete() {
+  const levelScore = state.score - state.levelStartScore;
+  const gained = Math.floor(levelScore / 1000);
+  if (gained > 0) addEssence(gained);
+  const isLast = state.zoneIndex >= 7;
+  const html =
+    '<h2>污染区 ' + ZONE_NAMES[state.zoneIndex] + ' 已净化</h2>' +
+    '<p>基因池稳定，幸存生物已适应环境。</p>' +
+    '<div class="stat-row"><span>本区得分</span><span class="v">' + levelScore + '</span></div>' +
+    '<div class="stat-row"><span>累计变异分</span><span class="v">' + state.score + '</span></div>' +
+    '<div class="stat-row"><span>获得样本</span><span class="v">💎 ' + gained + '</span></div>' +
+    '<div class="stat-row"><span>样本余额</span><span class="v">💎 ' + getEssence() + '</span></div>' +
+    '<div class="modal-actions">' +
+      (isLast
+        ? '<button class="btn" id="btnFinishGame">完成方舟</button>'
+        : '<button class="btn" id="btnNextZone">前往下一区</button>') +
+      '<button class="btn secondary" id="btnShopModal">样本商店</button>' +
+    '</div>';
+  showModal(html, () => {
+    const bn = document.getElementById('btnNextZone');
+    if (bn) bn.onclick = () => { closeModal(); nextZone(); };
+    const bf = document.getElementById('btnFinishGame');
+    if (bf) bf.onclick = () => { closeModal(); onGameComplete(); };
+    const bs = document.getElementById('btnShopModal');
+    if (bs) bs.onclick = () => { showShop(() => { closeModal(); }); };
+  });
+}
+
+function onGameComplete() {
+  const html =
+    '<h2>方舟重生</h2>' +
+    '<p>8个污染区全部净化！紫雾散去，生命延续。</p>' +
+    '<div class="stat-row"><span>最终变异分</span><span class="v">' + state.score + '</span></div>' +
+    '<div class="stat-row"><span>难度</span><span class="v">' + ({easy:'轻松',normal:'普通',hard:'困难'}[state.difficulty]) + '</span></div>' +
+    '<div class="stat-row"><span>棋盘</span><span class="v">' + state.size + '×' + state.size + '</span></div>' +
+    '<p style="margin-top:12px;">在排行榜留下你的名字：</p>' +
+    '<input class="name-input" id="lbName" maxlength="12" placeholder="输入名字" />' +
+    '<div class="modal-actions">' +
+      '<button class="btn" id="btnSubmitLB">留名</button>' +
+      '<button class="btn secondary" id="btnBackMenu">返回菜单</button>' +
+    '</div>';
+  showModal(html, () => {
+    document.getElementById('btnSubmitLB').onclick = () => {
+      const nm = (document.getElementById('lbName').value || '匿名旅者').trim().slice(0, 12);
+      submitLeaderboard(nm, state.score, state.zoneIndex + 1);
+      closeModal();
+      showLeaderboard(() => showMenu());
+    };
+    document.getElementById('btnBackMenu').onclick = () => { closeModal(); clearSave(); showMenu(); };
+  });
+}
+
+function onGameOver() {
+  const html =
+    '<h2>方舟陷落</h2>' +
+    '<p>基因池被病毒吞没，幸存生物已无法延续。</p>' +
+    '<div class="stat-row"><span>已达区域</span><span class="v">' + ZONE_NAMES[state.zoneIndex] + '（第' + (state.zoneIndex + 1) + '区）</span></div>' +
+    '<div class="stat-row"><span>变异分</span><span class="v">' + state.score + '</span></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn" id="btnRetry">重试本区</button>' +
+      '<button class="btn secondary" id="btnGOMenu">返回菜单</button>' +
+    '</div>';
+  showModal(html, () => {
+    document.getElementById('btnRetry').onclick = () => { closeModal(); retryLevel(); };
+    document.getElementById('btnGOMenu').onclick = () => { closeModal(); clearSave(); showMenu(); };
+  });
+}
+
+/* ---------- 技能系统 ---------- */
+
+function skillCost(skill) {
+  const uses = (state.skillUses && state.skillUses[skill.key]) || 0;
+  return Math.floor(skill.baseCost * Math.pow(1.5, uses)); // 成本递增1.5倍
+}
+
+function onSkillClick(key) {
+  const skill = SKILLS.find(s => s.key === key);
+  if (!skill) return;
+  const cost = skillCost(skill);
+  if (state.energy < cost) { toast('能量不足'); return; }
+  if (skillMode) cancelSkillMode();
+  state.energy -= cost;
+  skillMode = key;
+  if (key === 'antibody') {
+    // 抗体注射需要选目标格（中心），给提示
+    toast('点选3×3范围中心格');
+  } else if (key === 'edit') {
+    toast('点选要改色的生物');
+  } else if (key === 'split') {
+    toast('点选Lv≥8生物复制');
+  } else if (key === 'mutate') {
+    toast('点选生物强制突变');
+  }
+  render();
+}
+
+function onCellClick(r, c) {
+  if (!skillMode) return;
+  const cell = board[r][c];
+  if (skillMode === 'edit') {
+    if (!cell || cell.type !== 'creature') { toast('请选生物'); return; }
+    selectedPalette = { r: r, c: c };
+    showPaletteModal();
+  } else if (skillMode === 'split') {
+    if (!cell || cell.type !== 'creature' || cell.value < 8) { toast('需选Lv≥8生物'); return; }
+    const ns = getNeighbors(r, c);
+    for (const p of ns) {
+      if (!board[p[0]][p[1]]) {
+        board[p[0]][p[1]] = createCell(cell.value, cell.color, cell.tag);
+        finishSkill();
+        return;
+      }
+    }
+    toast('周围无空格');
+  } else if (skillMode === 'antibody') {
+    // 清除3×3范围内所有病毒
+    let killed = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= state.size || nc < 0 || nc >= state.size) continue;
+        const t = board[nr][nc];
+        if (t && t.type === 'virus') {
+          board[nr][nc] = null;
+          state.energy += 8; state.score += 80;
+          killed++;
+        }
+      }
+    }
+    if (killed === 0) toast('范围内无病毒');
+    finishSkill();
+  } else if (skillMode === 'mutate') {
+    if (!cell || cell.type !== 'creature') { toast('请选生物'); return; }
+    cell.value = cell.value * 2;
+    cell.color = 'purple';
+    cell.maxHp = computeMaxHp(cell.value, cell.tag);
+    cell.hp = cell.maxHp;
+    state.score += cell.value;
+    findAndQueueEvolutions();
+    if (pendingEvolutions.length > 0) {
+      showEvolution(() => { finishSkill(); });
+    } else {
+      finishSkill();
+    }
+  }
+}
+
+function finishSkill() {
+  if (skillMode) {
+    const skill = SKILLS.find(s => s.key === skillMode);
+    if (skill) {
+      state.skillUses = state.skillUses || {};
+      state.skillUses[skill.key] = (state.skillUses[skill.key] || 0) + 1;
+    }
+    skillMode = null;
+    selectedPalette = null;
+    save();
+    render();
+  }
+}
+
+function cancelSkillMode() {
+  if (skillMode) {
+    const skill = SKILLS.find(s => s.key === skillMode);
+    if (skill) {
+      const cost = skillCost(skill);
+      state.energy += cost; // 退还能量
+    }
+    skillMode = null;
+    selectedPalette = null;
+    render();
+  }
+}
+
+// 色板弹窗（基因编辑）
+function showPaletteModal() {
+  const colors = ['red', 'green', 'blue', 'yellow', 'purple'];
+  const html =
+    '<h2>选择基因色</h2>' +
+    '<p>将该生物的基因色改为：</p>' +
+    '<div class="palette">' +
+    colors.map(col =>
+      '<div class="palette-btn ' + COLOR_TILE_CLASS[col] + '" data-color="' + col + '">' + COLOR_ICON[col] + '</div>'
+    ).join('') +
+    '</div>' +
+    '<div class="modal-actions"><button class="btn secondary" id="btnCancelPalette">取消</button></div>';
+  showModal(html, () => {
+    document.querySelectorAll('.palette-btn').forEach(b => {
+      b.onclick = () => {
+        const col = b.getAttribute('data-color');
+        if (selectedPalette) {
+          const cell = board[selectedPalette.r][selectedPalette.c];
+          if (cell && cell.type === 'creature') {
+            cell.color = col;
+            cell.maxHp = computeMaxHp(cell.value, cell.tag);
+            cell.hp = cell.maxHp;
+          }
+        }
+        closeModal();
+        finishSkill();
+      };
+    });
+    document.getElementById('btnCancelPalette').onclick = () => { closeModal(); cancelSkillMode(); };
+  });
+}
+
+/* ---------- 商店 ---------- */
+
+function showShop(onClose) {
+  const upgrades = getUpgradeLevels();
+  const essence = getEssence();
+  let cards = '';
+  UPGRADES.forEach(u => {
+    const lvl = upgrades[u.key] || 0;
+    const maxed = lvl >= u.maxLevel;
+    const canBuy = !maxed && essence >= u.cost;
+    cards +=
+      '<div class="shop-card">' +
+        '<div class="icon">' + u.icon + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + u.name + '</div>' +
+          '<div class="desc">' + u.desc + '</div>' +
+          '<div class="lvl">等级 ' + lvl + ' / ' + u.maxLevel + '</div>' +
+        '</div>' +
+        (maxed
+          ? '<button class="btn" disabled>已满级</button>'
+          : '<button class="btn ' + (canBuy ? '' : 'disabled') + '" data-buy="' + u.key + '" ' + (canBuy ? '' : 'disabled') + '>💎' + u.cost + '</button>') +
+      '</div>';
+  });
+  const html =
+    '<h2>样本商店</h2>' +
+    '<p>用变异样本永久强化方舟能力（每级成本固定）</p>' +
+    '<div class="stat-row"><span>样本余额</span><span class="v">💎 ' + essence + '</span></div>' +
+    cards +
+    '<div class="modal-actions"><button class="btn secondary" id="btnCloseShop">关闭</button></div>';
+  showModal(html, () => {
+    document.querySelectorAll('[data-buy]').forEach(b => {
+      b.onclick = () => {
+        const key = b.getAttribute('data-buy');
+        const u = UPGRADES.find(x => x.key === key);
+        const cur = getUpgradeLevels();
+        const lvl = cur[key] || 0;
+        if (lvl >= u.maxLevel) return;
+        if (getEssence() < u.cost) { toast('样本不足'); return; }
+        addEssence(-u.cost);
+        cur[key] = lvl + 1;
+        localStorage.setItem('ark_mut_upgrades', JSON.stringify(cur));
+        showShop(onClose); // 刷新
+      };
+    });
+    document.getElementById('btnCloseShop').onclick = () => { onClose(); };
+  });
+}
+
+/* ---------- 排行榜 ---------- */
+
+// 当前生效的难度/棋盘（state 优先，回退到菜单选项，保证菜单下也能查看排行榜）
+function currentDiff() { return state ? state.difficulty : menuDifficulty; }
+function currentSize() { return state ? state.size : menuSize; }
+
+function lbKey() { return 'ark_mut_lb_' + currentDiff() + '_' + currentSize(); }
+
+function getLeaderboard() {
+  try {
+    const raw = localStorage.getItem(lbKey());
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) { return []; }
+}
+
+function submitLeaderboard(name, score, zones) {
+  const list = getLeaderboard();
+  const now = new Date();
+  const date = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  list.push({ name: name, score: score, zones: zones, date: date, time: time });
+  list.sort((a, b) => b.score - a.score);
+  const top = list.slice(0, 10);
+  localStorage.setItem(lbKey(), JSON.stringify(top));
+}
+
+function showLeaderboard(onClose) {
+  const list = getLeaderboard();
+  let rows = '';
+  if (list.length === 0) {
+    rows = '<p style="color:var(--muted);padding:20px 0;">暂无记录，去净化第一个污染区吧！</p>';
+  } else {
+    rows = list.map((e, i) =>
+      '<div class="lb-row">' +
+        '<span class="rank">' + (i + 1) + '</span>' +
+        '<span class="nm">' + escapeHtml(e.name) + ' · ' + e.zones + '区 · ' + e.date + '</span>' +
+        '<span class="sc">' + e.score + '</span>' +
+      '</div>'
+    ).join('');
+  }
+  const html =
+    '<h2>排行榜</h2>' +
+    '<p style="font-size:12px;">难度：' + ({easy:'轻松',normal:'普通',hard:'困难'}[currentDiff()]) + ' · 棋盘：' + currentSize() + '×' + currentSize() + '</p>' +
+    rows +
+    '<div class="modal-actions"><button class="btn secondary" id="btnCloseLB">关闭</button></div>';
+  showModal(html, () => {
+    document.getElementById('btnCloseLB').onclick = () => { onClose(); };
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+/* ---------- 存档 ---------- */
+
+function save() {
+  try {
+    localStorage.setItem('ark_mut_save', JSON.stringify({
+      state: state,
+      board: board,
+      size: state.size,
+      difficulty: state.difficulty,
+      zoneIndex: state.zoneIndex
+    }));
+  } catch (e) {}
+}
+
+function clearSave() {
+  localStorage.removeItem('ark_mut_save');
+}
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem('ark_mut_save');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state = data.state;
+    state.size = data.size;
+    state.difficulty = data.difficulty;
+    state.zoneIndex = data.zoneIndex;
+    board = data.board;
+    // 重建 currentLevel 与 breedTask.check
+    state.currentLevel = generateLevel(state.zoneIndex);
+    if (data.state.currentLevel && data.state.currentLevel.tasks) {
+      // 恢复任务完成状态
+      state.currentLevel.tasks = data.state.currentLevel.tasks;
+    }
+    // 重算 cellIdCounter
+    let maxId = 0;
+    for (let r = 0; r < state.size; r++)
+      for (let c = 0; c < state.size; c++)
+        if (board[r][c] && board[r][c].id > maxId) maxId = board[r][c].id;
+    cellIdCounter = maxId;
+    pendingEvolutions = [];
+    evolutionOfferedIds = new Set();
+    skillMode = null;
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- 渲染 ---------- */
+
+function render() {
+  renderHUD();
+  renderTasks();
+  renderWave();
+  renderBoard();
+  renderSkills();
+  renderSkillHint();
+}
+
+function renderHUD() {
+  document.getElementById('hudScore').textContent = state.score;
+  document.getElementById('hudEnergy').textContent = state.energy;
+  document.getElementById('hudZone').textContent = (state.zoneIndex + 1) + '/8';
+  document.getElementById('hudDiff').textContent = { easy: '轻松', normal: '普通', hard: '困难' }[state.difficulty];
+  document.getElementById('zoneName').textContent = '污染区 ' + ZONE_NAMES[state.zoneIndex];
+}
+
+function renderTasks() {
+  const html = state.tasks.map(t =>
+    '<div class="task-row ' + (t.done ? 'done' : '') + '">' +
+      '<span class="dot"></span><span>' + t.label + '</span>' +
+    '</div>'
+  ).join('');
+  document.getElementById('taskPanel').innerHTML = html;
+}
+
+function renderWave() {
+  const target = state.currentLevel.waveTarget;
+  const cur = state.wavesSurvived;
+  document.getElementById('waveText').textContent = cur + ' / ' + target;
+  document.getElementById('waveFill').style.width = Math.min(100, (cur / target) * 100) + '%';
+}
+
+function renderBoard() {
+  const el = document.getElementById('board');
+  el.style.gridTemplateColumns = 'repeat(' + state.size + ', 1fr)';
+  let html = '';
+  const foresee = hasForeseeCell();
+  const nextPos = state.nextVirusPos;
+  for (let r = 0; r < state.size; r++) {
+    for (let c = 0; c < state.size; c++) {
+      const cell = board[r][c];
+      let cls = 'cell';
+      let inner = '';
+      if (!cell) {
+        // 空格：标记预言位置
+        if (foresee && nextPos && nextPos[0] === r && nextPos[1] === c) {
+          cls += ' next-virus';
+          inner = '<span style="color:var(--danger);font-size:18px;">☣</span>';
+        }
+      } else if (cell.type === 'virus') {
+        cls += ' tile-virus';
+        inner = '<span class="tag">☣</span>' +
+          '<span class="v">病毒</span>' +
+          '<span class="hp" style="color:var(--danger);">' + cell.hp + '</span>';
+      } else {
+        cls += ' ' + (COLOR_TILE_CLASS[cell.color] || 'tile-purple');
+        if (skillMode && isSkillTarget(cell, r, c)) cls += ' selectable';
+        inner = '';
+        if (cell.tag) {
+          const evoIcon = getTagIcon(cell.tag);
+          inner += '<span class="tag">' + evoIcon + '</span>';
+        }
+        inner += '<span class="v">' + cell.value + '</span>';
+        inner += '<span class="name">' + speciesName(cell.value) + '</span>';
+        inner += '<span class="hp">♥' + cell.hp + '</span>';
+      }
+      html += '<div class="' + cls + '" data-r="' + r + '" data-c="' + c + '">' + inner + '</div>';
+    }
+  }
+  el.innerHTML = html;
+  // 绑定点击
+  el.querySelectorAll('.cell').forEach(div => {
+    div.onclick = () => {
+      const r = parseInt(div.getAttribute('data-r'), 10);
+      const c = parseInt(div.getAttribute('data-c'), 10);
+      onCellClick(r, c);
+    };
+  });
+}
+
+function isSkillTarget(cell, r, c) {
+  if (skillMode === 'edit' || skillMode === 'mutate') return cell && cell.type === 'creature';
+  if (skillMode === 'split') return cell && cell.type === 'creature' && cell.value >= 8;
+  if (skillMode === 'antibody') return true; // 任意格
+  return false;
+}
+
+function getTagIcon(tag) {
+  const map = {
+    flame: '🔥', attack: '⚔️', tree: '🌳', fungus: '🍄',
+    shield: '🛡️', medicine: '💊', energy: '⚡', light: '☀️',
+    chaos: '🌀', foresee: '👁️'
+  };
+  return map[tag] || '';
+}
+
+function renderSkills() {
+  const el = document.getElementById('skills');
+  el.innerHTML = SKILLS.map(s => {
+    const cost = skillCost(s);
+    const cant = state.energy < cost;
+    const active = skillMode === s.key;
+    return '<div class="skill-card ' + (active ? 'active' : '') + (cant && !active ? ' disabled' : '') + '" data-skill="' + s.key + '">' +
+      '<div class="icon">' + s.icon + '</div>' +
+      '<div class="name">' + s.name + '</div>' +
+      '<div class="cost ' + (cant ? 'cant' : '') + '">' + cost + ' 能</div>' +
+    '</div>';
+  }).join('');
+  el.querySelectorAll('.skill-card').forEach(div => {
+    div.onclick = () => {
+      const key = div.getAttribute('data-skill');
+      onSkillClick(key);
+    };
+  });
+}
+
+function renderSkillHint() {
+  const el = document.getElementById('skillHint');
+  if (skillMode) {
+    const s = SKILLS.find(x => x.key === skillMode);
+    el.textContent = '技能模式：' + s.name + ' — ' + s.desc + '（Esc取消）';
+  } else {
+    el.textContent = '';
+  }
+}
+
+/* ---------- 弹窗通用 ---------- */
+
+function showModal(html, afterBind) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+  if (afterBind) afterBind();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+/* ---------- 帮助说明 ---------- */
+
+function showHelp(onClose) {
+  const chip = col => '<span class="color-chip" style="background:' + COLOR_HEX[col] + '"></span>' + COLOR_CN[col];
+  const html =
+    '<div class="help-content">' +
+    '<h2 style="color:var(--accent-soft);text-align:center;">玩法说明</h2>' +
+
+    '<h3>1. 基础操作</h3>' +
+    '<ul>' +
+      '<li>键盘：方向键或 WASD 滑动棋盘</li>' +
+      '<li>手机：在棋盘上滑动手指</li>' +
+      '<li>Esc：取消正在使用的技能</li>' +
+      '<li>每次有效滑动后，棋盘会随机生成一个新生物</li>' +
+    '</ul>' +
+
+    '<h3>2. 方块的双属性</h3>' +
+    '<p>每个生物方块有 <b>等级</b> 和 <b>基因色</b> 两个属性：</p>' +
+    '<div class="example">' +
+      '例如：<span class="color-chip" style="background:#ff4d6d"></span><b>2 红</b> = Lv2 的红色基因（DNA碎片）<br>' +
+      '等级链：2 → 4 → 8 → 16 → 32 → 64 → 128 → 256 → 512 → 1024<br>' +
+      '物种名：DNA碎片 → 基因 → 染色体 → 细胞 → 组织 → 器官 → 生物体 → 群落 → 生态系统 → 变异体' +
+    '</div>' +
+    '<p>5种基础基因色：' + chip('red') + ' / ' + chip('green') + ' / ' + chip('blue') + ' / ' + chip('yellow') + ' / ' + chip('purple') + '，终极色 ' + chip('gold') + '。</p>' +
+    '<p>方块右上角 <b style="color:var(--toxic)">♥数字</b> 是血量，归0时生物死亡消失。</p>' +
+
+    '<h3>3. 合并规则（最重要）</h3>' +
+    '<p>只有<b>等级相同</b>的两个生物才能合并。合并分三种情况：</p>' +
+
+    '<p><b>① 同色同值合并</b>：等级×2，颜色不变，升级一格。</p>' +
+    '<div class="example">' +
+      chip('red') + '2 + ' + chip('red') + '2 = ' + chip('red') + '4<br>' +
+      chip('blue') + '8 + ' + chip('blue') + '8 = ' + chip('blue') + '16' +
+    '</div>' +
+
+    '<p><b>② 配对表合并</b>：特定异色组合会合成新颜色（×2）：</p>' +
+    '<table>' +
+      '<tr><td>' + chip('red') + '红 + ' + chip('blue') + '蓝</td><td>→ ' + chip('purple') + '紫</td></tr>' +
+      '<tr><td>' + chip('green') + '绿 + ' + chip('yellow') + '黄</td><td>→ ' + chip('purple') + '紫</td></tr>' +
+      '<tr><td>' + chip('purple') + '紫 + ' + chip('purple') + '紫</td><td>→ ' + chip('gold') + '金</td></tr>' +
+    '</table>' +
+
+    '<p><b>③ 紫基因突变</b>：紫 + 其他色（不在配对表中），有 <b style="color:var(--accent-soft)">25% 低概率</b> 突变成功 ×4 变紫；75% 概率突变失败，只 ×2 并保持其中一个父代颜色。</p>' +
+    '<div class="example">' +
+      chip('purple') + '4 + ' + chip('red') + '4 → 25% 变 ' + chip('purple') + '16（成功）/ 75% 变 ' + chip('red') + '8 或 ' + chip('purple') + '8（失败）' +
+    '</div>' +
+    '<p style="font-size:12px;color:var(--muted);">混沌胞 tag 可让突变率+20%；突变亲和升级每级+5%。</p>' +
+
+    '<p><b>④ 不能合并的情况</b>：等级不同，或不同色且不在配对表中（如 ' + chip('red') + '红 + ' + chip('green') + '绿、' + chip('blue') + '蓝 + ' + chip('yellow') + '黄）。</p>' +
+
+    '<p><b>连锁反应</b>：合并产物可继续与下一个合并。例如 ' + chip('red') + '2 + ' + chip('red') + '2 + ' + chip('red') + '4 会一路合成 ' + chip('red') + '8。</p>' +
+
+    '<h3>4. 生物血量</h3>' +
+    '<p>血量公式：hp = log₂(等级) + 病毒抗性升级加成，盾细胞额外+2。被病毒感染 -1，归0死亡。</p>' +
+
+    '<h3>5. 病毒系统</h3>' +
+    '<ul>' +
+      '<li>每 N 回合生成1个病毒（N 随难度/区域递减，最小3）</li>' +
+      '<li>病毒每回合感染相邻4格生物 -1血（<b>单生物单回合最多-1，多个相邻病毒不叠加</b>）</li>' +
+      '<li>乔木 🌳 免疫感染</li>' +
+      '<li>' + chip('blue') + '蓝基因抗体：相邻病毒时，若蓝基因等级≥病毒血量，每回合对病毒+1伤害；攻细胞 ⚔️ 额外+1</li>' +
+      '<li>病毒血量归0被击杀：+8能量 +80分</li>' +
+      '<li>病毒作为<b>墙</b>，不可穿过、不可合并，会把一行/列切成独立段</li>' +
+      '<li>预言胞 👁️ 可预知下波病毒的落点（红色脉冲标记）</li>' +
+    '</ul>' +
+
+    '<h3>6. 分化系统</h3>' +
+    '<p>当生物达到 <b>Lv16 且无标签</b> 时，触发分化选择（合并产物若父代有标签则继承，不再分化）。5色各有2个分支：</p>' +
+    '<table>' +
+      '<tr><td>' + chip('red') + '红</td><td>🔥炎细胞（每回合+1能量）/ ⚔️攻细胞（对病毒+1伤害）</td></tr>' +
+      '<tr><td>' + chip('green') + '绿</td><td>🌳乔木（免疫感染）/ 🍄真菌（每回合分裂1个Lv2）</td></tr>' +
+      '<tr><td>' + chip('blue') + '蓝</td><td>🛡️盾细胞（血量+2）/ 💊药细胞（治愈3×3范围1血）</td></tr>' +
+      '<tr><td>' + chip('yellow') + '黄</td><td>⚡能量胞（每回合+2能量）/ ☀️光细胞（治愈全图1血）</td></tr>' +
+      '<tr><td>' + chip('purple') + '紫</td><td>🌀混沌胞（突变率+20%）/ 👁️预言胞（预知病毒落点）</td></tr>' +
+    '</table>' +
+
+    '<h3>7. 能量与技能</h3>' +
+    '<p>能量来源：每回合被动+3；击杀病毒+8；同色合并+floor(新值/10)。</p>' +
+    '<ul>' +
+      '<li>🧬 基因编辑（25能）：选一个生物，改变其基因色</li>' +
+      '<li>🌱 细胞分裂（20能）：选Lv≥8生物，复制到相邻空格</li>' +
+      '<li>💉 抗体注射（35能）：清除3×3范围内所有病毒</li>' +
+      '<li>✨ 突变诱导（30能）：强制突变，数值×2变紫</li>' +
+    '</ul>' +
+    '<p style="font-size:12px;color:var(--muted);">每次使用后成本×1.5递增；Esc可取消并退还能量。</p>' +
+
+    '<h3>8. 关卡与任务</h3>' +
+    '<p>共8个污染区（α β γ δ ε ζ η θ）。每关2个任务：</p>' +
+    '<ul>' +
+      '<li><b>培育</b>：合成指定的终极生物（如金Lv32、紫Lv64…）</li>' +
+      '<li><b>生存</b>：抵御N波病毒潮</li>' +
+    '</ul>' +
+    '<p>两任务都完成→通关→进入下一区。棋盘满且无法合并→游戏结束→可重试当前区。</p>' +
+
+    '<h3>9. 变异样本商店</h3>' +
+    '<p>每关结算按本区得分获得样本（=得分/1000）。4项永久升级（每级成本固定）：</p>' +
+    '<ul>' +
+      '<li>⚡ 能量储备（2样本/级，5级）：每级+20起始能量</li>' +
+      '<li>🌱 培养加速（3样本/级，3级）：每级+1初始方块</li>' +
+      '<li>🛡️ 病毒抗性（4样本/级，3级）：每级生物血量+1</li>' +
+      '<li>✨ 突变亲和（5样本/级，2级）：每级紫基因突变率+5%</li>' +
+    '</ul>' +
+
+    '<h3>10. 棋盘大小</h3>' +
+    '<ul>' +
+      '<li><b>4×4</b>：标准棋盘，节奏紧凑，适合快速对局</li>' +
+      '<li><b>5×5</b>：更大空间，更多策略，波次+1</li>' +
+      '<li><b>6×6</b>：广阔天地，长线发育，初始4生物，波次+2</li>' +
+    '</ul>' +
+
+    '</div>' +
+    '<div class="modal-actions"><button class="btn" id="btnCloseHelp">明白了</button></div>';
+  showModal(html, () => {
+    document.getElementById('btnCloseHelp').onclick = () => { onClose(); };
+  });
+}
+
+/* ---------- 菜单与启动 ---------- */
+
+function showMenu() {
+  document.getElementById('menuOverlay').style.display = 'flex';
+  document.getElementById('gameView').style.display = 'none';
+  // 继续按钮可用性
+  document.getElementById('btnContinue').disabled = !localStorage.getItem('ark_mut_save');
+}
+
+function startGame() {
+  state = {
+    size: menuSize,
+    difficulty: menuDifficulty,
+    zoneIndex: 0,
+    score: 0,
+    energy: 0,
+    turn: 0,
+    wavesSurvived: 0,
+    tasks: [],
+    currentLevel: null,
+    skillUses: { edit: 0, split: 0, antibody: 0, mutate: 0 },
+    levelStartScore: 0,
+    levelStartEnergy: 0,
+    nextVirusPos: null
+  };
+  document.getElementById('menuOverlay').style.display = 'none';
+  document.getElementById('gameView').style.display = 'block';
+  loadLevel(0, {});
+}
+
+function continueGame() {
+  if (!loadProgress()) { toast('无存档'); return; }
+  document.getElementById('menuOverlay').style.display = 'none';
+  document.getElementById('gameView').style.display = 'block';
+  render();
+}
+
+/* ---------- 输入控制 ---------- */
+
+function handleKey(e) {
+  const key = e.key;
+  if (key === 'Escape') { cancelSkillMode(); return; }
+  if (!state) return;
+  // 仅在游戏视图可见且无弹窗时响应方向键
+  if (document.getElementById('gameView').style.display !== 'block') return;
+  if (document.getElementById('modalOverlay').classList.contains('show')) return;
+  let dir = null;
+  if (key === 'ArrowLeft' || key === 'a' || key === 'A') dir = 'left';
+  else if (key === 'ArrowRight' || key === 'd' || key === 'D') dir = 'right';
+  else if (key === 'ArrowUp' || key === 'w' || key === 'W') dir = 'up';
+  else if (key === 'ArrowDown' || key === 's' || key === 'S') dir = 'down';
+  if (dir) { e.preventDefault(); slide(dir); }
+}
+
+function handleTouchStart(e) {
+  if (e.touches.length === 1) {
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+}
+
+function handleTouchEnd(e) {
+  if (!touchStart || !state) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+  if (Math.abs(dx) > Math.abs(dy)) slide(dx > 0 ? 'right' : 'left');
+  else slide(dy > 0 ? 'down' : 'up');
+}
+
+/* ---------- 初始化与绑定 ---------- */
+
+function initMenu() {
+  // 难度选项
+  document.querySelectorAll('#diffOptions .option-btn').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#diffOptions .option-btn').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      menuDifficulty = b.getAttribute('data-diff');
+      document.getElementById('diffDesc').textContent = DIFF_DESC[menuDifficulty];
+    };
+  });
+  // 棋盘大小选项
+  document.querySelectorAll('#sizeOptions .option-btn').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#sizeOptions .option-btn').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      menuSize = parseInt(b.getAttribute('data-size'), 10);
+      document.getElementById('sizeDesc').textContent = SIZE_DESC[menuSize];
+    };
+  });
+  document.getElementById('btnStart').onclick = startGame;
+  document.getElementById('btnContinue').onclick = continueGame;
+  document.getElementById('btnHelp').onclick = () => {
+    // 帮助说明不依赖游戏状态，菜单/游戏中均可查看
+    showHelp(() => closeModal());
+  };
+  document.getElementById('btnLB').onclick = () => {
+    showLeaderboard(() => closeModal());
+  };
+  document.getElementById('btnShop').onclick = () => {
+    showShop(() => closeModal());
+  };
+
+  // 游戏内按钮
+  document.getElementById('btnRestart').onclick = () => {
+    if (confirm('确定重启当前区域？进度将回到本区开始时（不清空存档）。')) {
+      retryLevel();
+    }
+  };
+  document.getElementById('btnMenu').onclick = () => {
+    if (confirm('返回主菜单？当前进度已自动保存。')) showMenu();
+  };
+  document.getElementById('btnHelp2').onclick = () => showHelp(() => closeModal());
+
+  // 键盘
+  document.addEventListener('keydown', handleKey);
+  // 触屏
+  const boardEl = document.getElementById('board');
+  boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+  boardEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+  // 点击遮罩关闭弹窗（仅非强制弹窗）
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target.id === 'modalOverlay') closeModal();
+  });
+
+  showMenu();
+}
+
+// 启动
+initMenu();
+</script>
+</body>
+</html>
