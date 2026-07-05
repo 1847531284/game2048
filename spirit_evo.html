@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>精灵方舟：进化</title>
+  <style>
+    :root {
+      --bg: #1b2a1b;
+      --panel: #243824;
+      --panel-light: #2f452f;
+      --text: #f3f9e8;
+      --muted: #a8c6a8;
+      --accent: #9ef916;
+      --accent-soft: #b9ff66;
+      --danger: #ff4d6d;
+      --gold: #ffd166;
+      --soil: #d4a373;
+      --barren: #8d7f78;
+      --water: #4cc9f0;
+      --nest: #e9c46a;
+      --sanctuary: #f4d35e;
+      --radius: 14px;
+      --shadow: 0 12px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(158,249,22,0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 90%, rgba(76,201,240,0.08) 0%, transparent 40%),
+        var(--bg);
+      color: var(--text);
+      display: flex; flex-direction: column; align-items: center;
+      overflow: hidden;
+    }
+
+    h1, h2, h3 { font-family: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', serif; margin: 0; }
+
+    /* 通用按钮 */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #76c300);
+      border: none; border-radius: 12px; padding: 12px 28px;
+      font-size: 15px; font-weight: 700; color: #153000; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(158,249,22,0.25);
+      transition: transform .1s, filter .2s;
+    }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+    .btn:active { transform: translateY(0); }
+    .btn.secondary { background: var(--panel-light); color: var(--text); box-shadow: none; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+
+    .btn-icon {
+      background: var(--panel); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text); border-radius: 10px; width: 36px; height: 36px;
+      display: grid; place-items: center; cursor: pointer; font-size: 16px;
+      transition: transform .1s, background .2s;
+    }
+    .btn-icon:hover { background: var(--panel-light); }
+    .btn-icon:active { transform: scale(0.94); }
+
+    /* 开始菜单 */
+    .menu-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 300;
+      padding: 24px;
+    }
+    .menu-box {
+      width: min(460px, 96vw);
+      background: var(--panel);
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .menu-box h1 { font-size: 32px; color: var(--accent-soft); letter-spacing: 2px; }
+    .menu-box .subtitle { color: var(--muted); font-size: 14px; margin: 8px 0 24px; }
+    .menu-section { margin: 18px 0; text-align: left; }
+    .menu-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .option-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .option-btn {
+      flex: 1; min-width: 80px;
+      background: var(--panel-light); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text); border-radius: 10px; padding: 10px 14px;
+      cursor: pointer; font-size: 14px; font-weight: 600;
+      transition: background .2s, border-color .2s;
+    }
+    .option-btn:hover { background: rgba(255,255,255,0.08); }
+    .option-btn.selected { border-color: var(--accent); background: rgba(158,249,22,0.12); color: var(--accent-soft); }
+    .menu-desc { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+    .menu-actions { margin-top: 24px; display: flex; gap: 10px; justify-content: center; }
+
+    /* 顶部栏 */
+    .topbar {
+      width: min(560px, 98vw);
+      margin-top: 8px;
+      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+    }
+    .title-group h1 { font-size: 22px; letter-spacing: 1px; color: var(--accent-soft); }
+    .title-group p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+    .top-actions { display: flex; gap: 8px; }
+
+    /* HUD */
+    .hud {
+      width: min(560px, 98vw);
+      margin: 8px 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    .hud-card {
+      background: var(--panel); border-radius: var(--radius);
+      padding: 8px 6px; text-align: center; box-shadow: var(--shadow);
+    }
+    .hud-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .hud-card .value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+
+    /* 任务面板 */
+    .mission-panel {
+      width: min(560px, 98vw);
+      background: rgba(36,56,36,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .mission-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; cursor: pointer;
+    }
+    .mission-title { font-size: 14px; color: var(--gold); font-weight: 700; }
+    .mission-toggle { font-size: 12px; color: var(--muted); }
+    .mission-list { padding: 0 14px 12px; }
+    .mission-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0; }
+    .mission-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center; font-size: 11px; }
+    .mission-item.done { color: var(--accent-soft); }
+    .mission-item.done .mission-check { border-color: var(--accent-soft); background: var(--accent-soft); color: #1b2a1b; }
+
+    /* 腐化进度条 */
+    .corruption-bar-wrap {
+      width: min(560px, 98vw); margin-bottom: 8px;
+    }
+    .corruption-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--danger); margin-bottom: 4px; }
+    .corruption-track {
+      height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;
+    }
+    .corruption-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #ff758f, var(--danger));
+      transition: width .25s ease;
+    }
+
+    /* 棋盘 */
+    .board-wrap {
+      position: relative;
+      width: min(560px, 98vw); aspect-ratio: 1;
+      background: rgba(0,0,0,0.25);
+      border-radius: 20px; padding: 10px;
+      box-shadow: var(--shadow);
+      touch-action: none;
+    }
+    .board {
+      width: 100%; height: 100%;
+      display: grid; gap: 8px;
+    }
+    .cell {
+      position: relative;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      overflow: hidden;
+      transition: background .2s;
+    }
+    .cell.terrain-soil { background: var(--soil); }
+    .cell.terrain-barren {
+      background: repeating-linear-gradient(45deg, var(--barren), var(--barren) 5px, #7a6e68 5px, #7a6e68 10px);
+      box-shadow: inset 0 0 14px rgba(0,0,0,0.35);
+    }
+    .cell.terrain-water {
+      background: linear-gradient(135deg, var(--water), #277da1);
+      opacity: 0.95;
+    }
+    .cell.terrain-nest { background: var(--nest); }
+    .cell.terrain-sanctuary {
+      background: radial-gradient(circle at 30% 30%, #fff4bd, var(--sanctuary));
+      box-shadow: inset 0 0 18px rgba(255,255,255,0.35);
+    }
+    .cell.terrain-barren::after,
+    .cell.terrain-water::after,
+    .cell.terrain-nest::after,
+    .cell.terrain-sanctuary::after {
+      position: absolute; font-size: 16px; opacity: 0.55; pointer-events: none;
+    }
+    .cell.terrain-barren::after { content: '🏜️'; }
+    .cell.terrain-water::after { content: '💧'; }
+    .cell.terrain-nest::after { content: '🪺'; }
+    .cell.terrain-sanctuary::after { content: '✨'; }
+
+    .cell.choosable { cursor: pointer; box-shadow: inset 0 0 0 3px var(--accent); }
+    .cell.choosable:hover { filter: brightness(1.15); }
+
+    .tile {
+      width: 88%; height: 88%;
+      border-radius: 9px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-weight: 800;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: transform .12s, opacity .12s;
+      z-index: 2;
+    }
+    .tile-pop { animation: pop .18s ease; }
+    @keyframes pop {
+      0% { transform: scale(0.6); }
+      70% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    .tile-icon { font-size: 24px; line-height: 1; }
+    .tile-value { font-size: 11px; opacity: 0.85; }
+    .tile-corrupted {
+      background: linear-gradient(135deg, #6a040f, #9d0208);
+      color: #fff;
+      border: 2px solid #ff4d6d;
+      box-shadow: 0 0 14px rgba(255,77,109,0.55);
+    }
+    .tile-hp {
+      position: absolute; bottom: 3px; right: 3px;
+      font-size: 9px; color: var(--danger); background: rgba(0,0,0,0.45);
+      padding: 1px 3px; border-radius: 4px;
+    }
+
+    /* 精灵技能面板 */
+    .spirit-panel {
+      width: min(560px, 98vw);
+      margin-top: 10px;
+      background: var(--panel); border-radius: var(--radius);
+      padding: 10px;
+      box-shadow: var(--shadow);
+    }
+    .spirit-row { display: flex; gap: 8px; overflow-x: auto; }
+    .spirit-card {
+      flex: 1; min-width: 100px;
+      background: var(--panel-light); border-radius: 12px;
+      padding: 9px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: transform .1s, border-color .2s;
+      cursor: pointer;
+    }
+    .spirit-card.disabled { opacity: 0.45; cursor: not-allowed; }
+    .spirit-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(158,249,22,0.18); }
+    .spirit-card .avatar { font-size: 24px; }
+    .spirit-card .name { font-size: 12px; font-weight: 700; margin-top: 3px; }
+    .spirit-card .cost { font-size: 11px; color: var(--accent-soft); margin-top: 2px; }
+    .spirit-card .uses { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* 遮罩与结算 */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,18,10,0.92);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100;
+      padding: 20px; text-align: center;
+    }
+    .overlay.show { display: flex; }
+    #helpOverlay { z-index: 400; }
+    .burst-anim {
+      font-size: 64px; animation: rise 1.4s ease-in-out;
+    }
+    @keyframes rise {
+      0% { transform: translateY(40px) scale(0.6); opacity: 0; }
+      40% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1); opacity: 0; }
+    }
+    .score-board { margin-top: 16px; }
+    .score-big { font-size: 48px; font-weight: 800; color: var(--accent-soft); }
+    .score-label { font-size: 13px; color: var(--muted); }
+    .reward-list { margin: 14px 0; font-size: 14px; line-height: 1.7; }
+
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      background: var(--panel-light); color: var(--text);
+      padding: 8px 16px; border-radius: 20px; font-size: 13px;
+      box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s;
+      z-index: 200;
+    }
+    .toast.show { opacity: 1; }
+
+    /* 帮助 */
+    .help-scroll {
+      width: min(560px, 94vw);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: left;
+      box-shadow: var(--shadow);
+    }
+    .help-scroll h2 { text-align: center; color: var(--accent-soft); margin-bottom: 12px; }
+    .help-scroll h3 { font-size: 15px; color: var(--gold); margin: 14px 0 5px; }
+    .help-scroll p, .help-scroll li { font-size: 13px; line-height: 1.65; color: var(--text); }
+    .help-scroll ul { padding-left: 18px; margin: 5px 0; }
+    .help-scroll li { margin: 5px 0; }
+    .help-scroll b { color: var(--accent-soft); }
+    .help-scroll .btn { display: block; margin: 16px auto 0; }
+    .species-chain {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;
+      font-size: 12px;
+    }
+    .species-chip {
+      background: var(--panel-light); border-radius: 8px; padding: 4px 7px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .example-box {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px; margin: 8px 0;
+      font-size: 12px; color: var(--muted);
+    }
+
+    @media (max-width: 480px) {
+      .menu-box h1 { font-size: 26px; }
+      .title-group h1 { font-size: 18px; }
+      .tile-icon { font-size: 20px; }
+      .tile-value { font-size: 10px; }
+      .hud-card .value { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 开始菜单 -->
+  <div class="menu-overlay" id="menuOverlay">
+    <div class="menu-box">
+      <h1>精灵方舟：进化</h1>
+      <p class="subtitle">策略合并 · 生态模拟 · Roguelite 养成</p>
+
+      <div class="menu-section">
+        <div class="menu-label">选择难度</div>
+        <div class="option-row" id="difficultyRow">
+          <button class="option-btn selected" data-diff="easy">简单</button>
+          <button class="option-btn" data-diff="normal">普通</button>
+          <button class="option-btn" data-diff="hard">困难</button>
+        </div>
+        <div class="menu-desc" id="difficultyDesc">腐化增长慢，荒地少，任务要求低。</div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-label">选择棋盘大小</div>
+        <div class="option-row" id="sizeRow">
+          <button class="option-btn selected" data-size="4">4 × 4</button>
+          <button class="option-btn" data-size="5">5 × 5</button>
+          <button class="option-btn" data-size="6">6 × 6</button>
+        </div>
+        <div class="menu-desc" id="sizeDesc">标准棋盘，节奏紧凑。</div>
+      </div>
+
+      <div class="menu-actions">
+        <button class="btn" id="btnMenuRestart">开始复苏</button>
+        <button class="btn secondary" id="btnContinue" style="display:none;">继续进化</button>
+        <button class="btn secondary" id="btnMenuHelp">玩法说明</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div class="topbar" id="gameTopbar" style="display:none;">
+    <div class="title-group">
+      <h1>精灵方舟：进化</h1>
+      <p id="regionName">晨曦林地</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn-icon" id="btnRestart" title="重新开始">↺</button>
+      <button class="btn-icon" id="btnMenu" title="返回菜单">☰</button>
+      <button class="btn-icon" id="btnHelp" title="玩法说明">?</button>
+    </div>
+  </div>
+
+  <div class="hud" id="gameHud" style="display:none;">
+    <div class="hud-card"><div class="label">生态分</div><div class="value" id="score">0</div></div>
+    <div class="hud-card"><div class="label">自然之力</div><div class="value" id="energy">0</div></div>
+    <div class="hud-card"><div class="label">区域</div><div class="value" id="level">1</div></div>
+    <div class="hud-card"><div class="label">难度</div><div class="value" id="diffLabel">普通</div></div>
+  </div>
+
+  <div class="mission-panel" id="missionPanel" style="display:none;">
+    <div class="mission-header" id="missionHeader">
+      <span class="mission-title">🌿 生态任务</span>
+      <span class="mission-toggle" id="missionToggle">收起 ▲</span>
+    </div>
+    <div class="mission-list" id="missionList"></div>
+  </div>
+
+  <div class="corruption-bar-wrap" id="corruptionWrap" style="display:none;">
+    <div class="corruption-label"><span>腐化侵蚀</span><span id="corruptionText">0%</span></div>
+    <div class="corruption-track"><div class="corruption-fill" id="corruptionFill"></div></div>
+  </div>
+
+  <div class="board-wrap" id="boardWrap" style="display:none;">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="spirit-panel" id="spiritPanel" style="display:none;">
+    <div class="spirit-row" id="spiritRow"></div>
+  </div>
+
+  <div class="overlay" id="settlementOverlay">
+    <div class="burst-anim" id="burstAnim">🐉</div>
+    <h2 id="settlementTitle">区域复苏成功！</h2>
+    <div class="score-board">
+      <div class="score-label">最终生态得分</div>
+      <div class="score-big" id="finalScore">0</div>
+    </div>
+    <div class="reward-list" id="rewardList"></div>
+    <div>
+      <button class="btn" id="btnNext">下一区域</button>
+      <button class="btn secondary" id="btnRetry">再试一次</button>
+      <button class="btn secondary" id="btnSettleMenu">返回菜单</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="gameoverOverlay">
+    <h2>生态系统崩溃</h2>
+    <p style="color:var(--muted); margin:12px 0;">腐化淹没了这片土地……</p>
+    <div>
+      <button class="btn" id="btnOverRetry">重新开始</button>
+      <button class="btn secondary" id="btnOverMenu">返回菜单</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="helpOverlay">
+    <div class="help-scroll">
+      <h2>🌿 玩法说明</h2>
+
+      <section>
+        <h3>基础操作</h3>
+        <p>使用 <b>方向键 ↑↓←→</b> 或 <b>WASD</b> 移动棋盘；手机上直接<b>滑动棋盘</b>。相同数值的生命相撞会合并成下一级生命（数值翻倍）。每次有效移动后，空地会随机出现新的水滴 💧（2）或种子 🌰（4）。</p>
+      </section>
+
+      <section>
+        <h3>生命进化链</h3>
+        <div class="species-chain">
+          <div class="species-chip">💧2 水滴</div><div class="species-chip">→</div>
+          <div class="species-chip">🌰4 种子</div><div class="species-chip">→</div>
+          <div class="species-chip">🌱8 幼苗</div><div class="species-chip">→</div>
+          <div class="species-chip">🌿16 灌木</div><div class="species-chip">→</div>
+          <div class="species-chip">🌳32 树木</div><div class="species-chip">→</div>
+          <div class="species-chip">🦌64 鹿</div><div class="species-chip">→</div>
+          <div class="species-chip">🐺128 狼</div><div class="species-chip">→</div>
+          <div class="species-chip">🐻256 熊</div><div class="species-chip">→</div>
+          <div class="species-chip">💎512 精灵石</div><div class="species-chip">→</div>
+          <div class="species-chip">🐉1024 守护巨龙</div>
+        </div>
+      </section>
+
+      <section>
+        <h3>胜利目标</h3>
+        <p>每个区域都有 2 个<b>生态任务</b>，必须同时完成：</p>
+        <ul>
+          <li><b>净化荒地</b>：在荒地相邻四格合成出指定等级以上的植物（简单 8 / 普通 16 / 困难 32），即可净化该荒地。</li>
+          <li><b>生物共存</b>：让指定两种生命同时存在于棋盘上，例如“灌木 🌿 与 鹿 🦌 同时存在”。</li>
+        </ul>
+        <p>全部任务完成后触发<b>结算爆发</b>，场上所有生命换算为生态分，然后可进入下一区域。</p>
+      </section>
+
+      <section>
+        <h3>地形效果</h3>
+        <ul>
+          <li><b>🏜️ 荒地</b>：无法被占据，但方块可滑过；净化后变为沃土。</li>
+          <li><b>💧 水源</b>：<span style="color:var(--danger)">负面地形</span>，不可被占据，且会<strong>阻挡方块滑动</strong>。把它当作必须绕开的湖泊，普通难度起就会出现，困难模式下数量更多。</li>
+          <li><b>🪺 巢穴</b>：动物（≥64）停留在上面时，下回合会在相邻空格生成一只幼体（数值为成体的 1/16，最低为 4）。</li>
+          <li><b>✨ 圣地</b>：当熊（≥256）移动到上面时，全屏所有 ≤8 的方块连升两级；每个圣地每局仅触发一次。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>腐化威胁</h3>
+        <p>每次滑动腐化侵蚀 +3；若滑动被完全卡住，则额外 +10。侵蚀满 100 时生成<b>腐化之种</b> ☠️：</p>
+        <ul>
+          <li>每回合降级相邻一个正常方块一级（如 16→8）。</li>
+          <li>向相邻空格传播临时荒地，3 回合后自动消退。</li>
+          <li><b>净化方法</b>：合成出比腐化之种数值大一倍的正常方块，并移动到与它相邻的位置。例如腐化之种为 64，则需要一只 128 的狼 🐺 与之相邻。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>精灵与能量</h3>
+        <p>合并时会获得<b>自然之力</b>，获得量 = 合并产生的数值 ÷ 当前棋盘最大数值。能量用于释放精灵技能：</p>
+        <ul>
+          <li><b>净化之光</b>（30⚡）：以目标格为中心，净化 3×3 范围内的荒地，并升级其中的正常方块一级。</li>
+          <li><b>筑巢</b>（25⚡）：选择一个动物（≥64），将其所在格变为巢穴，并立即在相邻空格繁衍一只幼体。</li>
+          <li><b>共生爆发</b>（40⚡）：选择两个相邻、数值相差不超过 4 倍、不同物种且 ≥16 的植物/动物，合成一个更高级生命（数值为较高者的 4 倍）。</li>
+        </ul>
+        <p>每次使用同一技能，下一次消耗会翻倍（30→60→120…），请谨慎规划。</p>
+      </section>
+
+      <section>
+        <h3>难度与区域</h3>
+        <p><b>难度</b>影响腐化速度、荒地/水源数量、净化门槛以及任务要求：</p>
+        <ul>
+          <li><b>简单</b>：腐化 +2/次，净化门槛 8，荒地与水源很少。</li>
+          <li><b>普通</b>：腐化 +3/次，净化门槛 16，开始出现水源，地形与威胁均衡。</li>
+          <li><b>困难</b>：腐化 +5/次，净化门槛 32，荒地与水源明显增多，容错低。</li>
+        </ul>
+        <p><b>棋盘大小</b>决定战场空间：4×4 节奏紧凑，5×5/6×6 需要更长线的规划。</p>
+        <p><b>区域</b>共有 <b>8</b> 个，每个区域都有独特名称与地形主题。随着区域推进：</p>
+        <ul>
+          <li>荒地、水源等障碍物数量逐渐增多。</li>
+          <li>需要净化的荒地数量会随区域序号增加。</li>
+          <li>生物共存任务的要求会<strong>每区域都提升一级</strong>，例如普通难度从“种子+灌木”逐步升级到“精灵石+守护巨龙”。</li>
+        </ul>
+        <p>完成第 8 个区域后，世界彻底复苏，游戏通关。</p>
+      </section>
+
+      <div class="example-box">
+        <b>小提示</b>：优先把低级生命推向荒地附近，合成灌木/树木时一并净化荒地；遇到腐化之种时，尽快合成高一级生命去净化，否则它会让棋盘越来越拥挤。
+      </div>
+
+      <button class="btn" id="btnCloseHelp">知道了</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========================= 配置表 =========================
+    const CONFIG = {
+      boardSize: 4,
+      difficulty: 'normal',
+      baseSpawn: [2, 4],
+      corruptionBase: 3,
+      corruptionBlockedExtra: 10,
+      corruptionMax: 100,
+      energyMax: 100,
+      barrenCleanseLevel: 16,
+      nestSpawnDivisor: 16,
+    };
+
+    const DIFFICULTY = {
+      easy: {
+        name: '简单',
+        corruptionBase: 2, corruptionBlockedExtra: 5, corruptionMax: 120,
+        spawnFourChance: 0.15, barrenCleanseLevel: 8,
+        initialTiles: 3, initialValue: 2,
+        barrenRatio: 0.06, waterRatio: 0.04, nestRatio: 0.02, sanctuaryRatio: 0,
+        taskBarrenBase: 2, taskCoexistPlant: 1, taskCoexistAnimal: 3,
+        desc: '腐化增长慢，荒地与水源少，净化门槛低，适合熟悉规则。'
+      },
+      normal: {
+        name: '普通',
+        corruptionBase: 3, corruptionBlockedExtra: 10, corruptionMax: 100,
+        spawnFourChance: 0.10, barrenCleanseLevel: 16,
+        initialTiles: 2, initialValue: 2,
+        barrenRatio: 0.10, waterRatio: 0.08, nestRatio: 0.02, sanctuaryRatio: 0.02,
+        taskBarrenBase: 2, taskCoexistPlant: 2, taskCoexistAnimal: 4,
+        desc: '标准节奏，地形与腐化威胁适中。'
+      },
+      hard: {
+        name: '困难',
+        corruptionBase: 5, corruptionBlockedExtra: 15, corruptionMax: 80,
+        spawnFourChance: 0.05, barrenCleanseLevel: 32,
+        initialTiles: 2, initialValue: 4,
+        barrenRatio: 0.16, waterRatio: 0.12, nestRatio: 0.04, sanctuaryRatio: 0.02,
+        taskBarrenBase: 3, taskCoexistPlant: 3, taskCoexistAnimal: 5,
+        desc: '腐化增长快，荒地与水源多且需要高级植物净化，容错低。'
+      },
+    };
+
+    const SPECIES = {
+      2: { name: '水滴', icon: '💧', color: '#a5d8ff', text: '#1a3c5a' },
+      4: { name: '种子', icon: '🌰', color: '#b5e48c', text: '#2a4018' },
+      8: { name: '幼苗', icon: '🌱', color: '#99d98c', text: '#1e3a18' },
+      16: { name: '灌木', icon: '🌿', color: '#76c893', text: '#123421' },
+      32: { name: '树木', icon: '🌳', color: '#52b69a', text: '#0b2e25' },
+      64: { name: '鹿', icon: '🦌', color: '#d4a373', text: '#3d2310' },
+      128: { name: '狼', icon: '🐺', color: '#a8a6a4', text: '#222' },
+      256: { name: '熊', icon: '🐻', color: '#bc6c25', text: '#2a1605' },
+      512: { name: '精灵石', icon: '💎', color: '#9d4edd', text: '#fff' },
+      1024: { name: '守护巨龙', icon: '🐉', color: '#ff9e00', text: '#2a1600' },
+    };
+    const MAX_SPECIES_VALUE = 1024;
+
+    const TERRAINS = {
+      soil: { name: '沃土', passable: true, occupiable: true },
+      barren: { name: '荒地', passable: true, occupiable: false },
+      water: { name: '水源', passable: false, occupiable: false },
+      nest: { name: '巢穴', passable: true, occupiable: true },
+      sanctuary: { name: '圣地', passable: true, occupiable: true },
+    };
+
+    const SPIRITS = [
+      {
+        id: 'purifier', name: '腐化克星', icon: '✨',
+        skill: { name: '净化之光', baseCost: 30, desc: '引爆一格，净化周围3x3荒地并升级其中方块' },
+        target: 'cell'
+      },
+      {
+        id: 'architect', name: '生态建筑师', icon: '🛠️',
+        skill: { name: '筑巢', baseCost: 25, desc: '选择一个动物，将其格变为巢穴并立即繁衍' },
+        target: 'animal'
+      },
+      {
+        id: 'chain', name: '链式反应者', icon: '⚡',
+        skill: { name: '共生爆发', baseCost: 40, desc: '选择两个相邻且差2级内的植物/动物，合成高级生物' },
+        target: 'pair'
+      },
+    ];
+
+    const REGION_NAMES = ['晨曦林地','迷雾沼泽','圣山遗迹','幽暗密林','翡翠草原','苍穹峰顶','银月山谷','熔岩边界'];
+    const TOTAL_REGIONS = REGION_NAMES.length;
+
+    // ========================= 状态 =========================
+    let state = {};
+    let skillMode = null;
+
+    // ========================= 初始化 =========================
+    function initState() {
+      return {
+        board: [],
+        score: 0,
+        energy: 0,
+        corruption: 0,
+        levelIndex: 0,
+        gameOver: false,
+        victory: false,
+        cleansedBarren: 0,
+        initialBarren: 0,
+        nestQueue: [],
+        spiritUses: Object.fromEntries(SPIRITS.map(s => [s.id, 0])),
+        tasks: [],
+      };
+    }
+
+    function createCell(value = 0, terrain = 'soil', type = 'normal') {
+      return { value, type, terrain, tempTimer: 0, sanctuaryUsed: false, pop: false };
+    }
+
+    function getCell(r, c) {
+      if (r < 0 || r >= CONFIG.boardSize || c < 0 || c >= CONFIG.boardSize) return null;
+      return state.board[r * CONFIG.boardSize + c];
+    }
+
+    function isOccupiable(cell) {
+      if (!cell) return false;
+      if (cell.type === 'corrupted' || cell.type === 'blocked_terrain') return false;
+      return TERRAINS[cell.terrain].occupiable;
+    }
+
+    function clearTile(cell) {
+      cell.value = 0;
+      cell.type = 'normal';
+    }
+
+    function getSpecies(value) {
+      let v = Math.min(MAX_SPECIES_VALUE, value);
+      return SPECIES[v] || SPECIES[2];
+    }
+
+    function boardMaxValue() {
+      let max = 2;
+      for (const cell of state.board) {
+        if (cell.value > max && cell.type === 'normal') max = cell.value;
+      }
+      return max;
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomEmptyCell(avoid = []) {
+      const avoidKeys = new Set(avoid.map(p => `${p.r},${p.c}`));
+      const empties = [];
+      for (let r = 0; r < CONFIG.boardSize; r++) {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          if (!avoidKeys.has(`${r},${c}`)) empties.push({ r, c });
+        }
+      }
+      if (!empties.length) return null;
+      return empties[Math.floor(Math.random() * empties.length)];
+    }
+
+    // ========================= 关卡生成 =========================
+    function generateLevel(levelIndex) {
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      const size = CONFIG.boardSize;
+      const total = size * size;
+      const name = REGION_NAMES[levelIndex % REGION_NAMES.length];
+      const level = { name, terrains: [], tasks: [], initialTiles: [] };
+
+      // 初始方块
+      const initialCount = diff.initialTiles;
+      const initialValue = diff.initialValue;
+      const occupied = [];
+      for (let i = 0; i < initialCount; i++) {
+        const pos = randomEmptyCell(occupied);
+        if (!pos) break;
+        occupied.push(pos);
+        level.initialTiles.push({ r: pos.r, c: pos.c, v: initialValue });
+      }
+
+      // 地形数量随区域进度增长，优先保证荒地（任务目标），再分配水源/巢穴/圣地，总障碍不超过 35%
+      const progressRatio = Math.min(0.22, levelIndex * 0.03);
+      const maxObstacles = Math.max(4, Math.floor(total * 0.35));
+      const addTerrain = (type, count) => {
+        for (let i = 0; i < count; i++) {
+          const pos = randomEmptyCell(occupied);
+          if (!pos) break;
+          occupied.push(pos);
+          level.terrains.push({ r: pos.r, c: pos.c, t: type });
+        }
+      };
+      const minWater = { easy: 0, normal: 1, hard: 2 }[CONFIG.difficulty];
+      let barrenCount = Math.max(1, Math.floor(total * (diff.barrenRatio + progressRatio)));
+      barrenCount = Math.min(barrenCount, maxObstacles - minWater);
+      let waterCount = Math.max(minWater, Math.floor(total * (diff.waterRatio + progressRatio * 0.4)));
+      waterCount = Math.min(waterCount, maxObstacles - barrenCount);
+      let nestCount = Math.min(Math.floor(total * diff.nestRatio), maxObstacles - barrenCount - waterCount);
+      let sanctuaryCount = Math.min(Math.floor(total * diff.sanctuaryRatio), maxObstacles - barrenCount - waterCount - nestCount);
+      addTerrain('barren', barrenCount);
+      addTerrain('water', waterCount);
+      addTerrain('nest', nestCount);
+      addTerrain('sanctuary', sanctuaryCount);
+
+      // 任务难度随区域梯度上涨
+      const actualBarrenCount = level.terrains.filter(t => t.t === 'barren').length;
+      const cleansableCount = Math.max(1, Math.min(actualBarrenCount, diff.taskBarrenBase + levelIndex));
+      level.tasks.push({ type: 'cleanse_barren', count: cleansableCount });
+
+      const plantPow = Math.min(9, Math.max(2, diff.taskCoexistPlant + levelIndex));
+      const animalPow = Math.min(10, Math.max(4, diff.taskCoexistAnimal + levelIndex));
+      level.tasks.push({ type: 'coexist', species: [Math.pow(2, plantPow), Math.pow(2, animalPow)] });
+
+      return level;
+    }
+
+    function loadLevel(index, skipRender) {
+      state = initState();
+      state.levelIndex = index;
+      applyDifficultyConfig();
+      const lvl = generateLevel(state.levelIndex);
+      setupLevel(lvl, skipRender);
+    }
+
+    function nextLevel() {
+      const savedScore = state.score;
+      const savedEnergy = state.energy;
+      loadLevel(state.levelIndex + 1, true);
+      state.score = savedScore;
+      state.energy = savedEnergy;
+      render();
+    }
+
+    function applyDifficultyConfig() {
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      CONFIG.corruptionBase = diff.corruptionBase;
+      CONFIG.corruptionBlockedExtra = diff.corruptionBlockedExtra;
+      CONFIG.corruptionMax = diff.corruptionMax;
+      CONFIG.barrenCleanseLevel = diff.barrenCleanseLevel;
+    }
+
+    function setupLevel(lvl, skipRender) {
+      // 初始化棋盘
+      for (let r = 0; r < CONFIG.boardSize; r++) {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          state.board.push(createCell(0, 'soil'));
+        }
+      }
+      // 地形
+      for (const t of lvl.terrains || []) {
+        const cell = getCell(t.r, t.c);
+        cell.terrain = t.t;
+        if (t.t === 'barren') state.initialBarren++;
+      }
+      // 初始方块
+      for (const tile of lvl.initialTiles || []) {
+        const cell = getCell(tile.r, tile.c);
+        cell.value = tile.v;
+        cell.type = 'normal';
+      }
+      state.tasks = (lvl.tasks || []).map(t => ({ ...t, done: false }));
+
+      document.getElementById('regionName').textContent = lvl.name;
+      document.getElementById('level').textContent = `${state.levelIndex + 1}/${TOTAL_REGIONS}`;
+      document.getElementById('diffLabel').textContent = DIFFICULTY[CONFIG.difficulty].name;
+      updateMissionPanel();
+      if (!skipRender) render();
+    }
+
+    // ========================= 渲染 =========================
+    function render() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+      boardEl.style.gridTemplateColumns = `repeat(${CONFIG.boardSize}, 1fr)`;
+      boardEl.style.gridTemplateRows = `repeat(${CONFIG.boardSize}, 1fr)`;
+
+      for (let r = 0; r < CONFIG.boardSize; r++) {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          const cell = getCell(r, c);
+          const div = document.createElement('div');
+          div.className = `cell terrain-${cell.terrain}`;
+          div.dataset.r = r; div.dataset.c = c;
+          if (skillMode) div.classList.add('choosable');
+          div.addEventListener('click', () => onCellClick(r, c));
+
+          if (cell.value > 0) {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            if (cell.type === 'corrupted') {
+              tile.classList.add('tile-corrupted');
+              tile.innerHTML = `<div class="tile-icon">☠️</div><div class="tile-value">${cell.value}</div><div class="tile-hp">HP ${cell.hp || 1}</div>`;
+            } else {
+              const s = getSpecies(cell.value);
+              tile.style.background = s.color;
+              tile.style.color = s.text;
+              tile.innerHTML = `<div class="tile-icon">${s.icon}</div><div class="tile-value">${cell.value}</div>`;
+              if (cell.pop) {
+                tile.classList.add('tile-pop');
+                cell.pop = false;
+              }
+            }
+            div.appendChild(tile);
+          }
+          boardEl.appendChild(div);
+        }
+      }
+      document.getElementById('score').textContent = state.score;
+      document.getElementById('energy').textContent = Math.floor(state.energy);
+      const corrPct = Math.min(100, Math.floor((state.corruption / CONFIG.corruptionMax) * 100));
+      document.getElementById('corruptionFill').style.width = corrPct + '%';
+      document.getElementById('corruptionText').textContent = corrPct + '%';
+      renderSpirits();
+      updateMissionPanel();
+    }
+
+    function updateMissionPanel() {
+      const list = document.getElementById('missionList');
+      list.innerHTML = '';
+      for (const task of state.tasks) {
+        const div = document.createElement('div');
+        div.className = 'mission-item' + (task.done ? ' done' : '');
+        let text = '';
+        if (task.type === 'cleanse_barren') {
+          text = `净化 ${task.count} 块荒地（${Math.min(state.cleansedBarren, task.count)}/${task.count}）`;
+        } else if (task.type === 'coexist') {
+          text = `使 ${task.species.map(v => getSpecies(v).name).join('、')} 同时存在`;
+        }
+        div.innerHTML = `<div class="mission-check">${task.done ? '✓' : ''}</div><span>${text}</span>`;
+        list.appendChild(div);
+      }
+    }
+
+    function renderSpirits() {
+      const row = document.getElementById('spiritRow');
+      row.innerHTML = '';
+      for (const s of SPIRITS) {
+        const uses = state.spiritUses[s.id] || 0;
+        const cost = s.skill.baseCost * Math.pow(2, uses);
+        const disabled = state.energy < cost || state.gameOver || state.victory;
+        const card = document.createElement('div');
+        card.className = 'spirit-card' + (disabled ? ' disabled' : '') + (skillMode && skillMode.spiritId === s.id ? ' active' : '');
+        card.innerHTML = `
+          <div class="avatar">${s.icon}</div>
+          <div class="name">${s.name}</div>
+          <div class="cost">${s.skill.name} ${cost}⚡</div>
+          <div class="uses">已用 ${uses} 次</div>
+        `;
+        card.title = s.skill.desc;
+        card.addEventListener('click', () => onSpiritClick(s));
+        row.appendChild(card);
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    // ========================= 移动与合并 =========================
+    function getLines(direction) {
+      const lines = [];
+      if (direction === 'left' || direction === 'right') {
+        for (let r = 0; r < CONFIG.boardSize; r++) {
+          const line = [];
+          for (let c = 0; c < CONFIG.boardSize; c++) line.push({ r, c, cell: getCell(r, c) });
+          if (direction === 'right') line.reverse();
+          lines.push(line);
+        }
+      } else {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          const line = [];
+          for (let r = 0; r < CONFIG.boardSize; r++) line.push({ r, c, cell: getCell(r, c) });
+          if (direction === 'down') line.reverse();
+          lines.push(line);
+        }
+      }
+      return lines;
+    }
+
+    function move(direction) {
+      if (state.gameOver || state.victory) return;
+      const lines = getLines(direction);
+      let moved = false;
+      let mergedAny = false;
+      let scoreGain = 0;
+      const mergeEvents = [];
+      const preMax = boardMaxValue();
+
+      for (const line of lines) {
+        const occupiable = line.filter(pos => isOccupiable(pos.cell));
+        const originals = occupiable
+          .map((pos, idx) => ({ pos, idx, value: pos.cell.value, type: pos.cell.type }))
+          .filter(o => o.value > 0);
+        occupiable.forEach(pos => clearTile(pos.cell));
+        const slots = occupiable.map(pos => ({ pos, filled: false, merged: false, value: 0 }));
+
+        for (const orig of originals) {
+          let placed = false;
+          for (const slot of slots) {
+            if (!slot.filled) {
+              slot.value = orig.value;
+              slot.filled = true;
+              slot.pos.cell.value = orig.value;
+              slot.pos.cell.type = orig.type;
+              if (slot.pos.cell !== orig.pos.cell) {
+                moved = true;
+                slot.pos.cell.pop = true;
+              }
+              placed = true;
+              break;
+            }
+            if (slot.value === orig.value && !slot.merged && orig.type === 'normal' && slot.pos.cell.type === 'normal') {
+              const newValue = orig.value * 2;
+              slot.value = newValue;
+              slot.merged = true;
+              slot.pos.cell.value = newValue;
+              slot.pos.cell.pop = true;
+              scoreGain += newValue;
+              mergeEvents.push({ r: slot.pos.r, c: slot.pos.c, value: newValue });
+              moved = true;
+              mergedAny = true;
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            orig.pos.cell.value = orig.value;
+            orig.pos.cell.type = orig.type;
+          }
+        }
+      }
+
+      if (mergedAny && preMax > 0) {
+        const totalMerged = mergeEvents.reduce((a, e) => a + e.value, 0);
+        state.energy = Math.min(CONFIG.energyMax, state.energy + totalMerged / preMax);
+      }
+      state.score += scoreGain;
+
+      afterMove({ moved, mergedAny, mergeEvents });
+    }
+
+    function afterMove({ moved, mergedAny, mergeEvents }) {
+      executeNestSpawns();
+
+      for (const ev of mergeEvents) {
+        if (ev.value >= CONFIG.barrenCleanseLevel) {
+          cleanseAdjacentBarren(ev.r, ev.c);
+        }
+      }
+
+      handleTerrainInteractions();
+      handleCorruptedPurification();
+      handleCorruptionActions();
+      decayTempTerrains();
+      updateCorruption(moved, mergedAny);
+
+      if (checkTasks()) {
+        triggerVictory();
+        render();
+        return;
+      }
+
+      if (moved) spawnTile();
+
+      if (!hasAnyMove()) triggerGameOver();
+
+      render();
+    }
+
+    function cleanseAdjacentBarren(r, c) {
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (const [dr, dc] of dirs) {
+        const cell = getCell(r + dr, c + dc);
+        if (cell && cell.terrain === 'barren') {
+          cell.terrain = 'soil';
+          cell.tempTimer = 0;
+          state.cleansedBarren++;
+        }
+      }
+    }
+
+    function handleTerrainInteractions() {
+      for (let r = 0; r < CONFIG.boardSize; r++) {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          const cell = getCell(r, c);
+          if (!cell) continue;
+          if (cell.terrain === 'nest' && cell.value >= 64 && cell.type === 'normal') {
+            const already = state.nestQueue.some(q => q.r === r && q.c === c);
+            if (!already) {
+              const spawnValue = Math.max(4, Math.floor(cell.value / CONFIG.nestSpawnDivisor));
+              state.nestQueue.push({ r, c, value: spawnValue });
+            }
+          }
+          if (cell.terrain === 'sanctuary' && cell.value >= 256 && cell.type === 'normal' && !cell.sanctuaryUsed) {
+            cell.sanctuaryUsed = true;
+            for (const other of state.board) {
+              if (other.value > 0 && other.value <= 8 && other.type === 'normal') {
+                other.value = Math.min(MAX_SPECIES_VALUE, other.value * 4);
+              }
+            }
+            showToast('圣地觉醒：低阶生命获得进化！');
+          }
+        }
+      }
+    }
+
+    function handleCorruptedPurification() {
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (let i = 0; i < state.board.length; i++) {
+        const cell = state.board[i];
+        if (cell.type !== 'corrupted') continue;
+        const r = (i / CONFIG.boardSize) | 0;
+        const c = i % CONFIG.boardSize;
+        for (const [dr, dc] of dirs) {
+          const nb = getCell(r + dr, c + dc);
+          if (nb && nb.type === 'normal' && nb.value === cell.value * 2) {
+            const gain = cell.value;
+            state.energy = Math.min(CONFIG.energyMax, state.energy + gain);
+            clearTile(cell);
+            showToast(`净化腐化之种！+${gain} 自然之力`);
+            break;
+          }
+        }
+      }
+    }
+
+    function handleCorruptionActions() {
+      for (let i = 0; i < state.board.length; i++) {
+        const cell = state.board[i];
+        if (cell.type !== 'corrupted') continue;
+        const cr = (i / CONFIG.boardSize) | 0;
+        const cc = i % CONFIG.boardSize;
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+
+        const neighbors = [];
+        for (const [dr, dc] of dirs) {
+          const nb = getCell(cr + dr, cc + dc);
+          if (nb && nb.value > 0 && nb.type === 'normal') neighbors.push(nb);
+        }
+        if (neighbors.length) {
+          const target = neighbors[Math.floor(Math.random() * neighbors.length)];
+          target.value = target.value > 2 ? target.value / 2 : 0;
+          if (target.value === 0) target.type = 'normal';
+        }
+
+        const empties = [];
+        for (const [dr, dc] of dirs) {
+          const nb = getCell(cr + dr, cc + dc);
+          if (nb && nb.value === 0 && isOccupiable(nb)) empties.push(nb);
+        }
+        if (empties.length) {
+          const target = empties[Math.floor(Math.random() * empties.length)];
+          target.terrain = 'barren';
+          target.tempTimer = 3;
+        }
+      }
+    }
+
+    function executeNestSpawns() {
+      const queue = state.nestQueue;
+      state.nestQueue = [];
+      for (const q of queue) {
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        const empties = [];
+        for (const [dr, dc] of dirs) {
+          const cell = getCell(q.r + dr, q.c + dc);
+          if (cell && cell.value === 0 && isOccupiable(cell)) empties.push(cell);
+        }
+        if (empties.length) {
+          const target = empties[Math.floor(Math.random() * empties.length)];
+          target.value = q.value;
+          target.type = 'normal';
+          target.pop = true;
+        }
+      }
+    }
+
+    function decayTempTerrains() {
+      for (const cell of state.board) {
+        if (cell.tempTimer > 0) {
+          cell.tempTimer--;
+          if (cell.tempTimer === 0 && cell.terrain === 'barren') {
+            cell.terrain = 'soil';
+          }
+        }
+      }
+    }
+
+    function updateCorruption(moved, mergedAny) {
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      let inc = diff.corruptionBase;
+      if (!moved && !mergedAny) inc += diff.corruptionBlockedExtra;
+      state.corruption = Math.min(CONFIG.corruptionMax, state.corruption + inc);
+      if (state.corruption >= CONFIG.corruptionMax) {
+        state.corruption = 0;
+        spawnCorruptedSeed();
+      }
+    }
+
+    function spawnCorruptedSeed() {
+      const empties = state.board.filter(cell => cell.value === 0 && isOccupiable(cell));
+      if (!empties.length) return;
+      const cell = empties[Math.floor(Math.random() * empties.length)];
+      const values = state.board.filter(c => c.value > 0 && c.type === 'normal').map(c => c.value);
+      let x = 2;
+      if (values.length) {
+        values.sort((a, b) => a - b);
+        const mid = values[Math.floor(values.length / 2)];
+        x = nearestPowerOfTwo(mid);
+      }
+      cell.value = x;
+      cell.type = 'corrupted';
+      cell.hp = 2;
+      showToast('腐化之种降临！');
+    }
+
+    function nearestPowerOfTwo(n) {
+      const log = Math.round(Math.log2(n));
+      const clamped = Math.max(1, Math.min(log, 10));
+      return Math.pow(2, clamped);
+    }
+
+    function spawnTile() {
+      const empties = state.board.filter(cell => cell.value === 0 && isOccupiable(cell));
+      if (!empties.length) return;
+      const cell = empties[Math.floor(Math.random() * empties.length)];
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      const v = Math.random() < diff.spawnFourChance ? 4 : 2;
+      cell.value = v;
+      cell.type = 'normal';
+      cell.pop = true;
+    }
+
+    function hasAnyMove() {
+      for (let r = 0; r < CONFIG.boardSize; r++) {
+        for (let c = 0; c < CONFIG.boardSize; c++) {
+          const cell = getCell(r, c);
+          if (!cell) continue;
+          if (cell.value === 0 && isOccupiable(cell)) return true;
+          if (cell.value > 0 && cell.type === 'normal') {
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+            for (const [dr, dc] of dirs) {
+              const nb = getCell(r + dr, c + dc);
+              if (nb && nb.value === cell.value && nb.type === 'normal') return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    // ========================= 任务与结算 =========================
+    function checkTasks() {
+      const diff = DIFFICULTY[CONFIG.difficulty];
+      for (const task of state.tasks) {
+        if (task.type === 'cleanse_barren') {
+          task.done = state.cleansedBarren >= task.count;
+        } else if (task.type === 'coexist') {
+          task.done = task.species.every(v => state.board.some(c => c.value === v && c.type === 'normal'));
+        }
+      }
+      return state.tasks.every(t => t.done);
+    }
+
+    function triggerVictory() {
+      state.victory = true;
+      let ecoScore = 0;
+      for (const cell of state.board) {
+        if (cell.value > 0 && cell.type === 'normal') ecoScore += cell.value;
+      }
+      ecoScore = ecoScore * 10 + state.score;
+      // 结算分加入累计生态分，并保留自然之力到下一区域
+      state.score = ecoScore;
+      const essence = Math.floor(ecoScore / 1000);
+      const isFinal = state.levelIndex + 1 >= TOTAL_REGIONS;
+      document.getElementById('settlementTitle').textContent = isFinal ? '🌍 全部区域复苏成功！' : '区域复苏成功！';
+      document.getElementById('finalScore').textContent = ecoScore;
+      document.getElementById('rewardList').innerHTML = isFinal ? `
+        <div>你已完成全部 ${TOTAL_REGIONS} 个区域的复苏！</div>
+        <div>难度：${DIFFICULTY[CONFIG.difficulty].name}　棋盘：${CONFIG.boardSize}×${CONFIG.boardSize}</div>
+        <div>获得自然精华 × ${essence}</div>
+      ` : `
+        <div>难度：${DIFFICULTY[CONFIG.difficulty].name}　棋盘：${CONFIG.boardSize}×${CONFIG.boardSize}</div>
+        <div>获得自然精华 × ${essence}</div>
+        <div>自然之力 ${Math.floor(state.energy)} 将继承到下一区域</div>
+      `;
+      document.getElementById('btnNext').style.display = isFinal ? 'none' : '';
+      document.getElementById('settlementOverlay').classList.add('show');
+      document.getElementById('toast').classList.remove('show');
+    }
+
+    function triggerGameOver() {
+      state.gameOver = true;
+      document.getElementById('gameoverOverlay').classList.add('show');
+      document.getElementById('toast').classList.remove('show');
+    }
+
+    // ========================= 精灵技能 =========================
+    function onSpiritClick(spirit) {
+      if (state.gameOver || state.victory) return;
+      if (skillMode && skillMode.spiritId === spirit.id) {
+        cancelSkillMode();
+        return;
+      }
+      const uses = state.spiritUses[spirit.id] || 0;
+      const cost = spirit.skill.baseCost * Math.pow(2, uses);
+      if (state.energy < cost) {
+        showToast('自然之力不足');
+        return;
+      }
+      skillMode = { spiritId: spirit.id, target: spirit.target, step: 1, first: null };
+      showToast(`请选择目标：${spirit.skill.name}（按 Esc 取消）`);
+      render();
+    }
+
+    function cancelSkillMode() {
+      skillMode = null;
+      render();
+    }
+
+    function onCellClick(r, c) {
+      if (!skillMode) return;
+      const spirit = SPIRITS.find(s => s.id === skillMode.spiritId);
+      if (!spirit) return;
+      const cell = getCell(r, c);
+
+      if (skillMode.target === 'cell') {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const tc = getCell(r + dr, c + dc);
+            if (!tc) continue;
+            if (tc.terrain === 'barren') {
+              tc.terrain = 'soil';
+              tc.tempTimer = 0;
+              state.cleansedBarren++;
+            }
+            if (tc.value > 0 && tc.type === 'normal' && tc.value < MAX_SPECIES_VALUE) {
+              tc.value = Math.min(MAX_SPECIES_VALUE, tc.value * 2);
+            }
+          }
+        }
+        spendSkill(spirit);
+        afterSkill();
+      } else if (skillMode.target === 'animal') {
+        if (cell.value >= 64 && cell.type === 'normal') {
+          cell.terrain = 'nest';
+          const spawnValue = Math.max(4, Math.floor(cell.value / CONFIG.nestSpawnDivisor));
+          const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+          const empties = [];
+          for (const [dr, dc] of dirs) {
+            const nb = getCell(r + dr, c + dc);
+            if (nb && nb.value === 0 && isOccupiable(nb)) empties.push(nb);
+          }
+          if (empties.length) {
+            const t = empties[Math.floor(Math.random() * empties.length)];
+            t.value = spawnValue;
+            t.type = 'normal';
+            t.pop = true;
+          }
+          spendSkill(spirit);
+          afterSkill();
+        } else {
+          showToast('请选择一个动物方块（≥64）');
+        }
+      } else if (skillMode.target === 'pair') {
+        if (skillMode.step === 1) {
+          if (cell.value > 0 && cell.type === 'normal' && cell.value >= 16) {
+            skillMode.first = { r, c };
+            skillMode.step = 2;
+            showToast('请选择相邻的另一个植物或动物');
+            render();
+          } else {
+            showToast('请选择一个植物或动物方块（≥16）');
+          }
+        } else {
+          const first = getCell(skillMode.first.r, skillMode.first.c);
+          const second = cell;
+          const dr = Math.abs(r - skillMode.first.r);
+          const dc = Math.abs(c - skillMode.first.c);
+          const adjacent = (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+          const ratio = Math.max(first.value, second.value) / Math.min(first.value, second.value);
+          const valid = adjacent && first.value > 0 && second.value > 0 && first.type === 'normal' && second.type === 'normal' && first.value >= 16 && second.value >= 16 && ratio <= 4 && first.value !== second.value;
+          if (valid) {
+            const newValue = Math.min(MAX_SPECIES_VALUE, Math.max(first.value, second.value) * 4);
+            first.value = newValue;
+            first.pop = true;
+            clearTile(second);
+            if (newValue >= CONFIG.barrenCleanseLevel) {
+              cleanseAdjacentBarren(skillMode.first.r, skillMode.first.c);
+            }
+            spendSkill(spirit);
+            afterSkill();
+          } else {
+            showToast('目标不合法：需相邻、差2级内、不同物种且≥16');
+          }
+        }
+      }
+    }
+
+    function spendSkill(spirit) {
+      const uses = state.spiritUses[spirit.id] || 0;
+      const cost = spirit.skill.baseCost * Math.pow(2, uses);
+      state.energy -= cost;
+      state.spiritUses[spirit.id] = uses + 1;
+    }
+
+    function afterSkill() {
+      skillMode = null;
+      handleCorruptedPurification();
+      handleCorruptionActions();
+      executeNestSpawns();
+      decayTempTerrains();
+      updateCorruption(true, false);
+      if (checkTasks()) {
+        triggerVictory();
+      } else if (!hasAnyMove()) {
+        triggerGameOver();
+      }
+      render();
+    }
+
+    // ========================= 菜单与流程控制 =========================
+    function hasActiveGame() {
+      return state.board && state.board.length > 0 && !state.gameOver && !state.victory;
+    }
+
+    function updateMenuButtons() {
+      const restartBtn = document.getElementById('btnMenuRestart');
+      const continueBtn = document.getElementById('btnContinue');
+      if (hasActiveGame()) {
+        restartBtn.textContent = '重新开始';
+        continueBtn.style.display = '';
+      } else {
+        restartBtn.textContent = '开始复苏';
+        continueBtn.style.display = 'none';
+      }
+    }
+
+    function showGameUI(show) {
+      const ids = ['gameTopbar','gameHud','missionPanel','corruptionWrap','boardWrap','spiritPanel'];
+      for (const id of ids) {
+        document.getElementById(id).style.display = show ? '' : 'none';
+      }
+      document.getElementById('menuOverlay').style.display = show ? 'none' : 'flex';
+      if (!show) updateMenuButtons();
+    }
+
+    function setupMenu() {
+      const diffRow = document.getElementById('difficultyRow');
+      const sizeRow = document.getElementById('sizeRow');
+      const diffDesc = document.getElementById('difficultyDesc');
+      const sizeDesc = document.getElementById('sizeDesc');
+
+      const sizeDescs = {
+        4: '标准棋盘，节奏紧凑。',
+        5: '更宽阔的棋盘，策略空间更大。',
+        6: '大型棋盘，需要更长线的规划。'
+      };
+
+      function selectOption(row, key, type) {
+        for (const btn of row.children) btn.classList.remove('selected');
+        const target = row.querySelector(`[data-${type}="${key}"]`);
+        if (target) target.classList.add('selected');
+        if (type === 'diff') {
+          CONFIG.difficulty = key;
+          diffDesc.textContent = DIFFICULTY[key].desc;
+        } else {
+          CONFIG.boardSize = parseInt(key, 10);
+          sizeDesc.textContent = sizeDescs[CONFIG.boardSize];
+        }
+      }
+
+      for (const btn of diffRow.children) {
+        btn.addEventListener('click', () => selectOption(diffRow, btn.dataset.diff, 'diff'));
+      }
+      for (const btn of sizeRow.children) {
+        btn.addEventListener('click', () => selectOption(sizeRow, btn.dataset.size, 'size'));
+      }
+
+      document.getElementById('btnMenuRestart').addEventListener('click', () => {
+        showGameUI(true);
+        loadLevel(0);
+      });
+
+      document.getElementById('btnContinue').addEventListener('click', () => {
+        showGameUI(true);
+      });
+
+      document.getElementById('btnMenuHelp').addEventListener('click', () => {
+        document.getElementById('helpOverlay').classList.add('show');
+      });
+    }
+
+    // ========================= 输入 =========================
+    function setupInput() {
+      document.addEventListener('keydown', (e) => {
+        if (document.getElementById('menuOverlay').style.display !== 'none') return;
+        if (skillMode) {
+          if (e.key === 'Escape') cancelSkillMode();
+          return;
+        }
+        switch (e.key) {
+          case 'ArrowUp': case 'w': case 'W': move('up'); break;
+          case 'ArrowDown': case 's': case 'S': move('down'); break;
+          case 'ArrowLeft': case 'a': case 'A': move('left'); break;
+          case 'ArrowRight': case 'd': case 'D': move('right'); break;
+        }
+      });
+
+      const wrap = document.getElementById('boardWrap');
+      let sx, sy;
+      wrap.addEventListener('touchstart', (e) => {
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+      }, { passive: true });
+      wrap.addEventListener('touchend', (e) => {
+        if (skillMode) { cancelSkillMode(); return; }
+        const ex = e.changedTouches[0].clientX;
+        const ey = e.changedTouches[0].clientY;
+        const dx = ex - sx, dy = ey - sy;
+        const minSwipe = 30;
+        if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) return;
+        if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+        else move(dy > 0 ? 'down' : 'up');
+      }, { passive: true });
+
+      document.getElementById('btnRestart').addEventListener('click', () => loadLevel(state.levelIndex));
+      document.getElementById('btnMenu').addEventListener('click', () => showGameUI(false));
+      document.getElementById('btnHelp').addEventListener('click', () => document.getElementById('helpOverlay').classList.add('show'));
+      document.getElementById('btnCloseHelp').addEventListener('click', () => document.getElementById('helpOverlay').classList.remove('show'));
+
+      document.getElementById('btnNext').addEventListener('click', () => {
+        document.getElementById('settlementOverlay').classList.remove('show');
+        nextLevel();
+      });
+      document.getElementById('btnRetry').addEventListener('click', () => {
+        document.getElementById('settlementOverlay').classList.remove('show');
+        loadLevel(state.levelIndex);
+      });
+      document.getElementById('btnSettleMenu').addEventListener('click', () => {
+        document.getElementById('settlementOverlay').classList.remove('show');
+        showGameUI(false);
+      });
+      document.getElementById('btnOverRetry').addEventListener('click', () => {
+        document.getElementById('gameoverOverlay').classList.remove('show');
+        loadLevel(state.levelIndex);
+      });
+      document.getElementById('btnOverMenu').addEventListener('click', () => {
+        document.getElementById('gameoverOverlay').classList.remove('show');
+        showGameUI(false);
+      });
+      document.getElementById('missionHeader').addEventListener('click', () => {
+        const t = document.getElementById('missionToggle');
+        const list = document.getElementById('missionList');
+        if (list.style.display === 'none') {
+          list.style.display = 'block';
+          t.textContent = '收起 ▲';
+        } else {
+          list.style.display = 'none';
+          t.textContent = '展开 ▼';
+        }
+      });
+    }
+
+    // ========================= 启动 =========================
+    setupMenu();
+    setupInput();
+  </script>
+</body>
+</html>
