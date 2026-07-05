@@ -1394,8 +1394,18 @@ function updateGist(data, cb) {
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onreadystatechange = function () {
     if (xhr.readyState !== 4) return;
-    if (xhr.status >= 200 && xhr.status < 300) cb(null);
-    else cb('上传失败 HTTP ' + xhr.status);
+    if (xhr.status >= 200 && xhr.status < 300) {
+      cb(null);
+    } else if (xhr.status === 401 || xhr.status === 403 || xhr.status === 404) {
+      // token 无权更新该 Gist，或 Gist 已被删除：清空 id，改用创建新 Gist
+      setGistId('');
+      createGist(data, function (err, newId) {
+        if (err) cb('上传失败（新建也失败）：' + err);
+        else { setGistId(newId); cb(null); }
+      });
+    } else {
+      cb('上传失败 HTTP ' + xhr.status);
+    }
   };
   xhr.send(body);
 }
@@ -1404,7 +1414,7 @@ function updateGist(data, cb) {
 function fetchGist(cb) {
   const token = getGistToken();
   const id = getGistId();
-  if (!id) { cb('无云端存档记录'); return; }
+  if (!id) { cb('无云端存档记录，请先上传'); return; }
   const xhr = new XMLHttpRequest();
   xhr.open('GET', 'https://api.github.com/gists/' + id);
   xhr.setRequestHeader('Authorization', 'token ' + token);
@@ -1420,6 +1430,13 @@ function fetchGist(cb) {
       } catch (e) { cb('解析云端数据失败'); }
     } else if (xhr.status === 404) {
       cb('云端存档已删除');
+    } else if (xhr.status === 401 || xhr.status === 403) {
+      // token 无权访问该 Gist：清空 gist_id，提示重新上传
+      setGistId('');
+      let msg = 'Token 无权访问此存档（HTTP ' + xhr.status + '）。';
+      msg += '可能原因：① Token 失效，请重新配置；② Gist 是用旧 Token 创建的，新 Token 无权访问。';
+      msg += '已清空本地存档ID，请重新点「上传到云端」创建新存档。';
+      cb(msg);
     } else {
       cb('下载失败 HTTP ' + xhr.status);
     }
