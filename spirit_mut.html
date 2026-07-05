@@ -497,6 +497,7 @@ let selectedPalette = null; // 基因编辑选中的方块坐标
 let menuDifficulty = 'normal';
 let menuSize = 5;
 let touchStart = null;   // 触屏起点
+let modalForce = false;  // 当前弹窗是否为强制（不可点遮罩关闭）
 
 /* ---------- 工具函数 ---------- */
 
@@ -802,7 +803,7 @@ function showEvolution(onComplete) {
         showEvolution(onComplete); // 处理下一个
       };
     });
-  });
+  }, true); // 强制弹窗，必须选择分化方向
 }
 
 /* ---------- 回合处理 ---------- */
@@ -1119,8 +1120,8 @@ function onZoneComplete() {
     const bf = document.getElementById('btnFinishGame');
     if (bf) bf.onclick = () => { closeModal(); onGameComplete(); };
     const bs = document.getElementById('btnShopModal');
-    if (bs) bs.onclick = () => { showShop(() => { closeModal(); }); };
-  });
+    if (bs) bs.onclick = () => { showShop(() => { onZoneComplete(); }); }; // 商店关闭后重弹结算
+  }, true); // 强制弹窗，不可点遮罩关闭
 }
 
 function onGameComplete() {
@@ -1144,10 +1145,11 @@ function onGameComplete() {
       showLeaderboard(() => showMenu());
     };
     document.getElementById('btnBackMenu').onclick = () => { closeModal(); clearSave(); showMenu(); };
-  });
+  }, true); // 强制弹窗
 }
 
 function onGameOver() {
+  clearSave(); // 游戏结束清存档，避免刷新加载死局（retryLevel 用内存 state，不受影响）
   const html =
     '<h2>方舟陷落</h2>' +
     '<p>基因池被病毒吞没，幸存生物已无法延续。</p>' +
@@ -1159,8 +1161,8 @@ function onGameOver() {
     '</div>';
   showModal(html, () => {
     document.getElementById('btnRetry').onclick = () => { closeModal(); retryLevel(); };
-    document.getElementById('btnGOMenu').onclick = () => { closeModal(); clearSave(); showMenu(); };
-  });
+    document.getElementById('btnGOMenu').onclick = () => { closeModal(); showMenu(); };
+  }, true); // 强制弹窗
 }
 
 /* ---------- 技能系统 ---------- */
@@ -1224,8 +1226,13 @@ function onCellClick(r, c) {
         }
       }
     }
-    if (killed === 0) toast('范围内无病毒');
-    finishSkill();
+    if (killed === 0) {
+      toast('范围内无病毒，已取消');
+      cancelSkillMode(); // 空放不消耗能量与次数
+    } else {
+      toast('清除 ' + killed + ' 个病毒');
+      finishSkill();
+    }
   } else if (skillMode === 'mutate') {
     if (!cell || cell.type !== 'creature') { toast('请选生物'); return; }
     cell.value = cell.value * 2;
@@ -1298,7 +1305,7 @@ function showPaletteModal() {
       };
     });
     document.getElementById('btnCancelPalette').onclick = () => { closeModal(); cancelSkillMode(); };
-  });
+  }, true); // 强制弹窗，只能通过按钮关闭（取消会退还能量）
 }
 
 /* ---------- 商店 ---------- */
@@ -1447,6 +1454,11 @@ function loadProgress() {
     pendingEvolutions = [];
     evolutionOfferedIds = new Set();
     skillMode = null;
+    // 保证重试所需字段有默认值（旧存档可能缺失）
+    if (typeof state.levelStartScore !== 'number') state.levelStartScore = state.score;
+    if (typeof state.levelStartEnergy !== 'number') state.levelStartEnergy = state.energy;
+    // 若存档处于游戏结束状态，直接清档避免加载死局
+    if (isGameOver()) { clearSave(); return false; }
     return true;
   } catch (e) { return false; }
 }
@@ -1582,14 +1594,16 @@ function renderSkillHint() {
 
 /* ---------- 弹窗通用 ---------- */
 
-function showModal(html, afterBind) {
+function showModal(html, afterBind, force) {
   document.getElementById('modalContent').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('show');
+  modalForce = !!force; // 强制弹窗不可点遮罩关闭
   if (afterBind) afterBind();
 }
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('show');
+  modalForce = false;
 }
 
 /* ---------- 帮助说明 ---------- */
@@ -1764,6 +1778,8 @@ function handleKey(e) {
 }
 
 function handleTouchStart(e) {
+  // 弹窗打开时不记录滑动起点（与键盘一致）
+  if (document.getElementById('modalOverlay').classList.contains('show')) return;
   if (e.touches.length === 1) {
     touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }
@@ -1771,6 +1787,8 @@ function handleTouchStart(e) {
 
 function handleTouchEnd(e) {
   if (!touchStart || !state) return;
+  // 弹窗打开时不响应滑动
+  if (document.getElementById('modalOverlay').classList.contains('show')) { touchStart = null; return; }
   const t = e.changedTouches[0];
   const dx = t.clientX - touchStart.x;
   const dy = t.clientY - touchStart.y;
@@ -1832,9 +1850,9 @@ function initMenu() {
   boardEl.addEventListener('touchstart', handleTouchStart, { passive: true });
   boardEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-  // 点击遮罩关闭弹窗（仅非强制弹窗）
+  // 点击遮罩关闭弹窗（仅非强制弹窗：帮助/排行榜/商店）
   document.getElementById('modalOverlay').addEventListener('click', e => {
-    if (e.target.id === 'modalOverlay') closeModal();
+    if (e.target.id === 'modalOverlay' && !modalForce) closeModal();
   });
 
   showMenu();
